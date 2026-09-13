@@ -44,9 +44,9 @@ hide:
 === "Release binary"
 
     ```sh
-    fetch https://github.com/daemonless/fjord/releases/latest/download/fjordd
-    fetch https://raw.githubusercontent.com/daemonless/fjord/main/packaging/fjordd.rc
-    install -m 755 fjordd /usr/local/sbin/fjordd
+    fetch https://github.com/daemonless/fjord/releases/latest/download/fjordd-freebsd-$(uname -m)
+    fetch https://github.com/daemonless/fjord/releases/latest/download/fjordd.rc
+    install -m 755 fjordd-freebsd-* /usr/local/sbin/fjordd
     install -m 755 fjordd.rc /usr/local/etc/rc.d/fjordd
 
     sysrc fjordd_enable=YES && service fjordd start    # then open http://<host>:3567
@@ -55,14 +55,14 @@ hide:
 === "Port"
 
     ```sh
-    pkg install -y git podman sysutils/podman-compose catatonit conmon ocijail   # the engine, from packages
+    pkg install -y git podman sysutils/podman-compose catatonit appjail sysutils/py-director   # both engines, from packages
     git clone https://github.com/daemonless/freebsd-ports
     cd freebsd-ports/sysutils/fjord && make install clean
 
     sysrc fjordd_enable=YES && service fjordd start    # then open http://<host>:3567
     ```
 
-    The port installs `fjordd` and its rc script and depends on the podman toolchain — installing that from packages first means `make` only builds fjord. Add `pkg install -y appjail sysutils/py-director` for the AppJail engine.
+    The port installs `fjordd` and its rc script; its options pull in both engines (`make config` to pick). Installing them from packages first means `make` only builds fjord.
 
 === "git clone"
 

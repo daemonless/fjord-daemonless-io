@@ -37,21 +37,21 @@ fjord is verified on FreeBSD 15.1 (amd64 and arm64).
 
 === "Release binary"
 
-    Every [release](https://github.com/daemonless/fjord/releases) ships a static `fjordd` for FreeBSD amd64 with the UI embedded, plus a source tarball (vendored modules, prebuilt UI) for other targets:
+    Every [release](https://github.com/daemonless/fjord/releases) ships static `fjordd` binaries for FreeBSD amd64 and arm64 with the UI embedded, the rc script, and a source tarball (vendored modules, prebuilt UI):
 
     ```sh
-    fetch https://github.com/daemonless/fjord/releases/latest/download/fjordd
-    fetch https://raw.githubusercontent.com/daemonless/fjord/main/packaging/fjordd.rc
-    install -m 755 fjordd /usr/local/sbin/fjordd
+    fetch https://github.com/daemonless/fjord/releases/latest/download/fjordd-freebsd-$(uname -m)
+    fetch https://github.com/daemonless/fjord/releases/latest/download/fjordd.rc
+    install -m 755 fjordd-freebsd-* /usr/local/sbin/fjordd
     install -m 755 fjordd.rc /usr/local/etc/rc.d/fjordd
     ```
 
 === "Port"
 
-    The port from the [daemonless ports overlay](https://github.com/daemonless/freebsd-ports) installs `fjordd` and its rc script, and depends on the podman toolchain (`podman`, `podman-compose`, `ocijail`, `conmon`, `catatonit`). Install those from packages first, or `make` builds each of them from source. It builds against the ports tree in `/usr/ports`.
+    The port from the [daemonless ports overlay](https://github.com/daemonless/freebsd-ports) installs `fjordd` and its rc script; its options pull in the engines (`PODMAN`: podman, podman-compose, catatonit — `APPJAIL`: appjail, appjail-director; both on by default, `make config` to change). Install those from packages first, or `make` builds each of them from source. It builds against the ports tree in `/usr/ports`.
 
     ```sh
-    pkg install -y git podman sysutils/podman-compose catatonit conmon ocijail
+    pkg install -y git podman sysutils/podman-compose catatonit appjail sysutils/py-director
     git clone https://github.com/daemonless/freebsd-ports
     cd freebsd-ports/sysutils/fjord && make install clean
     ```
@@ -60,7 +60,7 @@ fjord is verified on FreeBSD 15.1 (amd64 and arm64).
 
 === "git clone"
 
-    Needs `go` and `npm` (also the path for arm64 today):
+    Needs `go` and `npm`:
 
     ```sh
     pkg install -y git go npm
