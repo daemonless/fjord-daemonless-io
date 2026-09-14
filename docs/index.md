@@ -244,6 +244,24 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
 
 </div>
 
+<div class="fj-adopt-shot">
+  <div class="window-frame">
+    <div class="window-header">
+      <span class="window-dot red"></span>
+      <span class="window-dot yellow"></span>
+      <span class="window-dot green"></span>
+      <span class="window-title">fjord — adopt</span>
+      <span class="window-badge">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8"/><path d="M3 16.2V21m0 0h4.8M3 21l6-6"/><path d="M21 7.8V3m0 0h-4.8M21 3l-6 6"/><path d="M3 7.8V3m0 0h4.8M3 3l6 6"/></svg>
+        Click to Zoom
+      </span>
+    </div>
+    <a href="img/adopt.png" class="glightbox" data-gallery="fjord-showcase">
+      <img src="img/adopt.png" alt="Four podman containers and two appjail jails offered for adoption, with the director bundle a jail becomes" loading="lazy">
+    </a>
+  </div>
+</div>
+
 <div class="fj-section interface-showcase">
   <h2>Interface &amp; Diagnostics</h2>
   <p class="section-desc">Inspect runtime state, edit compose specifications directly on disk, and proactively audit host kernel, socket, and network readiness.</p>
