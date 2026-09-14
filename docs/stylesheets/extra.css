@@ -621,3 +621,8 @@ h1 .fj-f,
 /* Key Capabilities grid: same width and rhythm as the other sections */
 .md-typeset .fj-cards { max-width: 1100px; margin: 1.5rem auto 5rem; padding: 0 1rem; }
 .md-typeset .fj-install-tabs { max-width: 900px; margin: 0 auto 5rem; padding: 0 1rem; }
+
+/* Adopt section: two code blocks stacked with a "becomes" line between */
+.md-typeset .fj-adopt { max-width: 860px; margin: 1.5rem auto 5rem; padding: 0 1rem; }
+.md-typeset .fj-adopt > p { text-align: center; color: var(--md-default-fg-color--light); }
+.md-typeset .fj-adopt > pre { margin: 0.6rem 0; }

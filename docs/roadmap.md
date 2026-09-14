@@ -31,7 +31,7 @@ There is none. A first-run administrator password, a session cookie, one middlew
 
 - **Volumes per engine** — the Volumes page follows the default engine only; AppJail has no named volumes yet, so remote folders (NFS/SMB) need podman.
 - **Update policy per stack** — *manual* (today), *notify*, or *auto* on a schedule, with the digest pin as the brake. Pairs with **notifications** (webhook, Discord, email) for "updates available" and "stack crashed".
-- **Adopt existing containers and jails** — import a compose directory or a running container as a stack, for hosts built by hand.
+- **Adopt a compose directory** — running podman containers and appjail jails are adoptable since 0.2.1; a directory of hand-written `compose.yaml` files or a director project checked out somewhere is next.
 - **Fix button** on readiness checks — run the safe, non-destructive fixes (`pkg install`, `service start`) from the UI with live output. Designed, not built.
 - **Persistent shells** — a shell that survives navigating away.
 - **Templates** — "New stack from…" a saved compose, for stacks no catalog has.

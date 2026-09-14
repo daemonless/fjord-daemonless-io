@@ -185,11 +185,62 @@ x-fjord:
 
     Enforce clean separation between persistent application configuration and shared media pools. Define local paths, NFS exports, or SMB shares once as Folder Sets and attach them across any stack.
 
+-   :material-import: **Adopt What's Already Running**
+
+    ---
+
+    Containers and jails started by hand or by a playbook become stacks with one click. fjord reads a podman container's original run command into `compose.yaml`, or an appjail jail back into a director bundle; the same image, mounts, network address and name come back under management. No data moves.
+
 -   :material-package-variant-closed: **Single Self-Contained Binary**
 
     ---
 
     `fjordd` is a lightweight Go binary embedding its Svelte SPA frontend. Zero background Python runtimes, Node daemons, or heavy dependencies required.
+
+</div>
+
+<div class="fj-section">
+  <h2>Already running containers? Adopt them.</h2>
+  <p class="section-desc">A host built with <code>podman run</code> lines, <code>appjail quick</code>, an Ansible playbook, or a shell script does not have to start over. fjord lists every container and jail no stack owns, shows the stack it would write, and replaces it in place.</p>
+</div>
+
+<div class="fj-adopt" markdown>
+
+```
+podman run -d --name radarr --network vlan5 --ip 192.168.5.13 --mac-address 0e:05:00:00:00:0d \
+  -e PUID=1000 -e PGID=1000 -e TZ=America/New_York \
+  -v /containers/radarr:/config -v /nas/media:/media \
+  --annotation org.freebsd.jail.allow.mlock=true ghcr.io/daemonless/radarr:latest
+```
+
+becomes
+
+```yaml
+services:
+  radarr:
+    image: ghcr.io/daemonless/radarr:latest
+    container_name: radarr
+    restart: always
+    mac_address: 0e:05:00:00:00:0d
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - "/containers/radarr:/config"
+      - "/nas/media:/media"
+    annotations:
+      org.freebsd.jail.allow.mlock: "true"
+    networks:
+      vlan5:
+        ipv4_address: 192.168.5.13
+
+networks:
+  vlan5:
+    external: true
+```
+
+On the AppJail engine the same happens for a jail: its image, virtual network and address, exposes, mounts, environment and jail parameters are read back into an `appjail-director.yml`, `Makejail` and `template.conf`, the same files a catalog install produces. The setup wizard offers this on first run, the Stacks page offers it whenever unmanaged containers or jails exist, and **Adopt &amp; replace all** converts a whole host in one pass. Each stack keeps its name, so DHCP reservations, DNS and bookmarks keep working.
 
 </div>
 
