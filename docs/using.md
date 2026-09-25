@@ -80,7 +80,7 @@ The **Volumes** dashboard manages named storage volumes independently of specifi
 The **System** dashboard checks the underlying FreeBSD host on every visit and on **Re-check**:
 
 ### Readiness Audits
-Checks the Libpod API socket (`podman.sock`), Packet Filter anchors (`cni-rdr` and `appjail-nat`), container init daemons (`catatonit`), container monitors (`conmon`), and runtime binaries (`ocijail`). Each check displays its operational status, technical significance, and a copyable shell fix command.
+Checks the Libpod API socket (`podman.sock`), Packet Filter anchors (`cni-rdr` and `appjail-nat`), container monitors (`conmon`), and runtime binaries (`ocijail`). Each check displays its operational status, technical significance, and a copyable shell fix command.
 
 ### Storage Reclamation
 Inspects the total disk space utilized by container layers, base images, and temporary build caches across Podman and AppJail. The **Cleanup** function safely prunes orphaned layers without impacting running stacks or base jail dependencies.

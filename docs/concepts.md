@@ -43,7 +43,7 @@ fjord is architecturally engine-agnostic, decoupling compose specifications from
 | **Specification Format** | `compose.yaml` | `appjail-director.yml` + `Makejail` |
 | **CLI Orchestrator** | `podman-compose` | `appjail-director` |
 | **OCI Runtime** | `ocijail` | Native `jail(8)` via AppJail OCI |
-| **Networking Model** | CNI bridge network (`cni-rdr`), host network | Virtual bridge (`appjail-nat`), host network |
+| **Networking Model** | CNI bridge (`cni-rdr`), host, LAN address via `cni-epair` (DHCP or pool) — see [Networking](networking.md) | Virtual bridge (`appjail-nat`), host network |
 | **Remote Volumes** | Native NFS and SMB named volumes | Host-mounted paths |
 | **Jail Annotation Mapping** | `annotations:` in `compose.yaml` | Jail parameters in director spec |
 
@@ -120,7 +120,7 @@ Two layers keep a stack from failing for host reasons:
 
 If pre-flight fails, the stack configuration is saved to disk without launching, so you can change a port or free it and start again.
 
-**Readiness checks** run on the System page (and in the first-run wizard) and cover the host itself: the libpod socket, `catatonit`/`conmon`/`ocijail` and their versions, pf anchors (`cni-rdr/*` for podman, `appjail-nat/*` for AppJail), the AppJail toolchain and the fjord data root — each with *why* it matters and a copy-paste fix.
+**Readiness checks** run on the System page (and in the first-run wizard) and cover the host itself: the libpod socket, `conmon`/`ocijail` and their versions, pf anchors (`cni-rdr/*` for podman, `appjail-nat/*` for AppJail), the AppJail toolchain and the fjord data root — each with *why* it matters and a copy-paste fix.
 
 ---
 

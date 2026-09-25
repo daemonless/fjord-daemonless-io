@@ -28,14 +28,13 @@ The **System** dashboard runs automated audits against your FreeBSD host environ
 
 ---
 
-### Container Init &amp; Monitor (`catatonit` &amp; `conmon`)
+### Container Monitor (`conmon`)
 
-- **Technical Role**: `catatonit` serves as PID 1 inside container pods to reap zombie processes and route signals; `conmon` monitors container lifecycle, preserving exit codes and I/O streams while the engine daemon is idle.
-- **Failure Symptom**: Compose stacks fail immediately upon execution with an unhelpful `no such file or directory` error from the OCI runtime.
+- **Technical Role**: `conmon` monitors container lifecycle, preserving exit codes and I/O streams while the engine daemon is idle.
+- **Failure Symptom**: Containers fail to start with an unhelpful error from the OCI runtime.
 - **Remediation**:
-  Install both packages via FreeBSD `pkg`:
   ```sh
-  pkg install -y catatonit conmon
+  pkg install -y conmon
   ```
 
 ---

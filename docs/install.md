@@ -26,6 +26,28 @@ Follow the directions to set up [Podman](https://daemonless.io/guides/quick-star
     pkg install -y sysutils/py-director
     ```
 
+- **Name resolution between a stack's services** (podman): the `cni-dnsname`
+  plugin, so an app finds its database by name. Without it a multi-service app
+  starts, cannot find its database, and restarts over and over:
+
+    ```sh
+    pkg install -y cni-dnsname
+    ```
+
+- **LAN networks** (a container with an address of its own on your network):
+  the [cni-epair](https://github.com/daemonless/cni-epair) plugin. It is not in
+  the ports tree, so fjord installs it for you: the setup wizard and the
+  **System** page show an **Install** button while it is missing, which fetches
+  a pinned release and checks its checksum. By hand, the same thing is:
+
+    ```sh
+    fetch -o /usr/local/libexec/cni/epair https://raw.githubusercontent.com/daemonless/cni-epair/v1.1.1/epair
+    chmod 755 /usr/local/libexec/cni/epair
+    ```
+
+    Without it everything still runs on published ports; see
+    [Networking](networking.md) for what LAN networks add and how to set one up.
+
 fjord is verified on FreeBSD 15.1 (amd64 and arm64).
 
 !!! tip "Automated Diagnostics"
@@ -48,10 +70,10 @@ fjord is verified on FreeBSD 15.1 (amd64 and arm64).
 
 === "Port"
 
-    The port from the [daemonless ports overlay](https://github.com/daemonless/freebsd-ports) installs `fjordd` and its rc script; its options pull in the engines (`PODMAN`: podman, podman-compose, catatonit — `APPJAIL`: appjail, appjail-director; both on by default, `make config` to change). Install those from packages first, or `make` builds each of them from source. It builds against the ports tree in `/usr/ports`.
+    The port from the [daemonless ports overlay](https://github.com/daemonless/freebsd-ports) installs `fjordd` and its rc script; its options pull in the engines (`PODMAN`: podman, podman-compose, cni-dnsname — `APPJAIL`: appjail, appjail-director; both on by default, `make config` to change). For LAN networks, fjord installs the cni-epair plugin from its setup wizard. Install those from packages first, or `make` builds each of them from source. It builds against the ports tree in `/usr/ports`.
 
     ```sh
-    pkg install -y git podman sysutils/podman-compose catatonit appjail sysutils/py-director
+    pkg install -y git podman sysutils/podman-compose appjail sysutils/py-director
     git clone https://github.com/daemonless/freebsd-ports
     cd freebsd-ports/sysutils/fjord && make install clean
     ```
