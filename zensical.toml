@@ -25,6 +25,7 @@ nav = [
   { "Docs" = [
     { "Installation" = "install.md" },
     { "Operations" = "using.md" },
+    { "Updates" = "updates.md" },
     { "Networking" = "networking.md" },
     { "Architecture" = "concepts.md" },
     { "Troubleshooting" = "troubleshooting.md" },

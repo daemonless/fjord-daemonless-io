@@ -11,7 +11,8 @@ fjord organizes container infrastructure operations into five primary functional
 
 ## 1. Deploying Stacks via the App Store
 
-![The fjord App Store](img/store.png){ .glightbox }
+![The fjord App Store](img/store-dark.png#only-dark){ .glightbox }
+![The fjord App Store](img/store-light.png#only-light){ .glightbox }
 
 The **App Store** catalogs all container applications available across your configured repositories.
 
@@ -30,17 +31,36 @@ Before starting the container, fjord executes an automated **pre-flight verifica
 
 ---
 
+### Adopting what you started by hand
+**Adopt** on the dashboard (the stacks overview, also the setup wizard's
+"Already running" step) lists containers and jails on the host that no stack
+owns.
+fjord reads how each was started (`podman create` arguments, AppJail's
+parameters) and writes a stack for it, so it gets the same page, update
+checks and controls as everything installed from the store. A stack that
+does not start afterwards is reported, not hidden.
+
+---
+
 ## 2. Stack Lifecycle Management
 
-![Stack Management View](img/stack-appjail.png){ .glightbox }
+![The stacks overview: every stack, its state, its update and where it answers](img/stacks-dark.png#only-dark){ .glightbox }
+![The stacks overview: every stack, its state, its update and where it answers](img/stacks-light.png#only-light){ .glightbox }
+
+![A stack page, Services tab](img/stack-dark.png#only-dark){ .glightbox }
+![A stack page, Services tab](img/stack-light.png#only-light){ .glightbox }
 
 The **Stacks** view lists all active and stopped applications on the host, indicating their engine backend, running state, and update availability.
 
 ### Lifecycle Actions
 - **Start / Stop / Restart**: Dispatches orchestration commands to `podman-compose` or `appjail-director`.
-- **Update**: Fetches the newest container image for the stack's configured release channel and recreates the container or jail.
-- **Pin Version**: Locks the stack to a specific container digest or tag, preventing automated updates from overwriting tested images.
-- **Open App**: Opens the primary application web interface in a new browser tab.
+- **Update**: says what each service would get and lets you pick; recreates and watches the result. See [Updates](updates.md).
+- **Change Version… / Pin**: any published version, pinned to its digest if you want it to stay. See [Updates](updates.md).
+- **Open App**: Opens the primary application web interface in a new browser tab, at its LAN address when it has one.
+
+While a stack is installing or updating its buttons are greyed and say why;
+a second action is refused until it finishes. A failed action leaves a
+banner with the reason on the stack page until the next one succeeds.
 
 ### Interactive Diagnostics Drawer
 The bottom drawer provides three diagnostic views:
@@ -75,7 +95,14 @@ The **Volumes** dashboard manages named storage volumes independently of specifi
 
 ## 5. System Health &amp; Diagnostics
 
-![System Readiness Checks](img/system-checks.png){ .glightbox }
+![Setup: what fjord does itself, and the commands it leaves to you](img/setup-dark.png#only-dark){ .glightbox }
+![Setup: what fjord does itself, and the commands it leaves to you](img/setup-light.png#only-light){ .glightbox }
+
+The **Setup** screen runs once on a fresh host and gets it ready one thing
+at a time: an **Install** button for what fjord can do itself (plugins, pf
+anchors, services), and a "Your turn" card with the exact commands for what
+changes the host's own configuration, which fjord leaves to you. The same
+checks live on the **System** page afterwards.
 
 The **System** dashboard checks the underlying FreeBSD host on every visit and on **Re-check**:
 

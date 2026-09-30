@@ -139,6 +139,20 @@ The **System** dashboard runs automated audits against your FreeBSD host environ
 
 ---
 
+### Install failed: the stack reads "stopped" with a red banner
+An install that fails leaves the stack saved, stopped, with the reason in a
+banner on its page and a line in `/var/log/fjordd.log`. The usual causes: a
+tag that does not exist, a pull that ran out of disk (check `zfs list` on the
+pool holding `/var/db/containers`), or an image built for another
+architecture. Fix the cause, then **Start** the stack; the banner clears
+when an action succeeds.
+
+### Database "Access denied" after changing a password in `.env`
+A database image sets its user's password only when it first creates its
+data directory. Changing `DB_PASSWORD` afterwards changes what the app
+sends, not what the database holds. Either put the old value back, or change
+it inside the database (`ALTER USER`) to match.
+
 ### Remote SMB Volume Mount Refusal
 - **Cause**: FreeBSD's kernel SMB client (`mount_smbfs`) supports only SMB1 dialect. Modern NAS devices and file servers reject SMB1 negotiations by default for security.
 - **Remediation**: For FreeBSD hosts, connect persistent network storage using NFS (`nfs://server/export`).

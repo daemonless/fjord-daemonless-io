@@ -28,8 +28,11 @@ hide:
       <span class="window-dot green"></span>
       <span class="window-title">fjord — app store</span>
     </div>
-    <a href="img/store.png" class="glightbox">
-      <img src="img/store.png" alt="The fjord App Store interface" loading="lazy">
+    <a href="img/store-dark.png" class="glightbox">
+      <img src="img/store-dark.png#only-dark" alt="The fjord App Store interface" loading="lazy">
+    </a>
+    <a href="img/store-light.png" class="glightbox">
+      <img src="img/store-light.png#only-light" alt="The fjord App Store interface" loading="lazy">
     </a>
   </div>
 </div>
@@ -256,8 +259,11 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
         Click to Zoom
       </span>
     </div>
-    <a href="img/adopt.png" class="glightbox" data-gallery="fjord-showcase">
-      <img src="img/adopt.png" alt="Four podman containers and two appjail jails offered for adoption, with the director bundle a jail becomes" loading="lazy">
+    <a href="img/adopt-dark.png" class="glightbox" data-gallery="fjord-dark">
+      <img src="img/adopt-dark.png#only-dark" alt="Containers started by hand, offered for adoption with the stack each becomes" loading="lazy">
+    </a>
+    <a href="img/adopt-light.png" class="glightbox" data-gallery="fjord-light">
+      <img src="img/adopt-light.png#only-light" alt="Containers started by hand, offered for adoption with the stack each becomes" loading="lazy">
     </a>
   </div>
 </div>
@@ -274,15 +280,18 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
         <span class="window-dot red"></span>
         <span class="window-dot yellow"></span>
         <span class="window-dot green"></span>
-        <span class="window-title">fjord — stacks / jellyfin</span>
+        <span class="window-title">fjord — stacks / zensical</span>
         <span class="window-badge">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8"/><path d="M3 16.2V21m0 0h4.8M3 21l6-6"/><path d="M21 7.8V3m0 0h-4.8M21 3l-6 6"/><path d="M3 7.8V3m0 0h4.8M3 3l6 6"/></svg>
           Click to Zoom
         </span>
       </div>
-      <a href="img/stack-appjail.png" class="glightbox" data-gallery="fjord-showcase">
-        <img src="img/stack-appjail.png" alt="Stack Management and CodeMirror Spec Editor" loading="lazy">
-      </a>
+    <a href="img/stack-dark.png" class="glightbox" data-gallery="fjord-dark">
+      <img src="img/stack-dark.png#only-dark" alt="A stack page: the Services tab with the service on two LAN networks" loading="lazy">
+    </a>
+    <a href="img/stack-light.png" class="glightbox" data-gallery="fjord-light">
+      <img src="img/stack-light.png#only-light" alt="A stack page: the Services tab with the service on two LAN networks" loading="lazy">
+    </a>
     </div>
 
     <div class="showcase-feature-strip">
@@ -360,15 +369,18 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
             <span class="window-dot red"></span>
             <span class="window-dot yellow"></span>
             <span class="window-dot green"></span>
-            <span class="window-title">fjord — system diagnostics</span>
+            <span class="window-title">fjord — setup</span>
             <span class="window-badge">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8"/><path d="M3 16.2V21m0 0h4.8M3 21l6-6"/><path d="M21 7.8V3m0 0h-4.8M21 3l-6 6"/><path d="M3 7.8V3m0 0h4.8M3 3l6 6"/></svg>
               Click to Zoom
             </span>
           </div>
-          <a href="img/system-checks.png" class="glightbox" data-gallery="fjord-showcase">
-            <img src="img/system-checks.png" alt="fjord Host Readiness Checks" loading="lazy">
-          </a>
+    <a href="img/setup-dark.png" class="glightbox" data-gallery="fjord-dark">
+      <img src="img/setup-dark.png#only-dark" alt="Setup: what fjord does itself, and the commands it leaves to you" loading="lazy">
+    </a>
+    <a href="img/setup-light.png" class="glightbox" data-gallery="fjord-light">
+      <img src="img/setup-light.png#only-light" alt="Setup: what fjord does itself, and the commands it leaves to you" loading="lazy">
+    </a>
         </div>
       </div>
       <div class="showcase-split-details">
