@@ -21,7 +21,18 @@ and the **Services** tab of each stack shows and changes where each service is.
 
 A service can be on more than one: a typical multi-service app puts its web
 front end on the LAN and its database on the stack's private network, so the
-database is reachable by the app and by nothing else.
+database is reachable by the app and by nothing else. A one-service app gets
+no private network.
+
+Each service has a **Type** on the Services tab: **networks** (one or more
+interfaces, each on a network), **host** (this host's own network stack), or
+**none** (no network at all). Switching to host and back keeps the
+interfaces. The built-in bridge can sit next to a LAN network on one
+service, and a service on the bridge keeps its published ports.
+
+!!! note "Private is not isolated yet"
+    In 0.3 "private" means not reachable from your LAN. Stacks on the same
+    host can still reach each other's private networks; isolation is 0.3.6.
 
 !!! note "Bridge needs pf"
     Ports published on the bridge network go through pf's rdr anchors. The
@@ -31,6 +42,9 @@ database is reachable by the app and by nothing else.
 ---
 
 ## 2. LAN networks
+
+![The Networks page: the built-ins, two LAN networks on their bridges, the private ones folded away](img/networks-dark.png#only-dark){ .glightbox }
+![The Networks page: the built-ins, two LAN networks on their bridges, the private ones folded away](img/networks-light.png#only-light){ .glightbox }
 
 A LAN network gives a container its own address on one of the host's
 bridges, as if it were another machine plugged into the same switch.
@@ -47,6 +61,14 @@ bridges, as if it were another machine plugged into the same switch.
 **Creating one:** **Networks → New network**, pick the bridge, give it a name,
 and choose where its addresses come from (next section). Stacks can then be
 put on it from the install wizard or the **Services** tab.
+
+**The wire check.** When you pick a bridge the host has no address on, fjord
+asks its DHCP server what the network is (a caged probe through a throwaway
+interface) and fills in the subnet and gateway. A subnet that is not on that
+wire is refused, with the reason next to Create. The answer is kept across
+restarts and asked again daily; a network that disagrees with its wire is
+flagged on the Networks page and in the install wizard. Where nothing
+answers, fjord says so and lets you type the subnet.
 
 ### Where addresses come from
 
@@ -76,6 +98,11 @@ A service keeps its address through updates, restarts and reboots:
   seerr another address in the Services tab`).
 - Reservations left behind by containers that no longer exist are released
   the next time a stack starts on that network.
+- **Open** on a stack page goes to the service's address on your LAN, never
+  to a private 10.x one.
+- A stack's private network is removed with the stack. One left over from
+  an earlier version reads as "left over from a deleted stack" on the
+  Networks page and can be deleted there.
 
 ---
 
@@ -100,4 +127,12 @@ services on it then get an address of each. DHCP networks are IPv4 only.
 
 AppJail stacks use AppJail's own virtual networks: each jail gets an address
 behind NAT, and ports are published with `expose`. The **Networks** page lists
-which networks each engine can use.
+which networks each engine can use. A jail can also be put on a LAN network,
+with one interface per bridge; on a DHCP network fjord takes the lease on the
+host at install and gives the jail a fixed address.
+
+In 0.3 a jail cannot have the built-in bridge next to a LAN network, and a
+network added on the Services tab after install does not get the jail a
+second address (add both in the wizard). Jails find each other by name only
+when dnsmasq answers with appjail's config; the **Setup** page shows the
+commands. All of this is 0.3.5, AppJail parity.
