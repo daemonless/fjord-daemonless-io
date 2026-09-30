@@ -331,8 +331,11 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
           Click to Zoom
         </span>
       </div>
-      <a href="img/install-wizard.png" class="glightbox" data-gallery="fjord-showcase">
-        <img src="img/install-wizard.png" alt="fjord Stack Deployment Wizard" loading="lazy">
+      <a href="img/install-wizard-dark.png" class="glightbox" data-gallery="fjord-dark">
+        <img src="img/install-wizard-dark.png#only-dark" alt="The install wizard: a name, and what it installs where" loading="lazy">
+      </a>
+      <a href="img/install-wizard-light.png" class="glightbox" data-gallery="fjord-light">
+        <img src="img/install-wizard-light.png#only-light" alt="The install wizard: a name, and what it installs where" loading="lazy">
       </a>
     </div>
 
