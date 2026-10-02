@@ -6,7 +6,7 @@ description: "FreeBSD Jail Orchestration Runtime Descriptor — A vendor-neutral
 # FJORD Specification (v1.0.0-Draft)
 
 **FreeBSD Jail Orchestration Runtime Descriptor**<br>
-**Status**: Draft — a proposal. The [implementation status](#implementation-status) table says what exists today.<br>
+**Status**: Draft — a proposal. The [implementation status](#implementation-status) table says what fjord 0.3 implements.<br>
 **Scope**: Standardized Metadata and Orchestration for OCI Containers on FreeBSD<br>
 **Author**: Michael Johnson (`michaeljohnson@ahze.net`)
 
@@ -69,8 +69,23 @@ A compliant FJORD host environment provides:
 
 What fjord and the daemonless catalog implement today versus what this draft proposes. Proposed items are open for discussion and contribution; nothing depends on them yet.
 
-| Area | Implemented today | Proposed |
+| Area | Implemented in fjord 0.3 | Proposed |
 | :--- | :--- | :--- |
+| `x-fjord.info` | `id`, `name`, `description`, `category`, `class` (`service`, `stack`), `icon`, `version`, `upstream_url`, `web_url`, `web_port` / `web_https` for the Open link | `requires`, `health_url`, classes `agent` / `gui` |
+| `x-fjord.variables` | types `port`, `string`, `secret`, `path`, `zfs_dataset` (a folder under App data + `host_permissions`), `image_tag` (a service's tag, with its `image`); `label`, `optional`, `level` (`primary`, `options`, `advanced`: where the wizard shows it) | `network_interface`, real ZFS datasets with `zfs_properties` |
+| `x-fjord.variants` | the image's tags to pick from (`id`, `label`, `default`, `version`, `aliases`); the wizard asks the registry what each is built for and refuses a tag with no build for the host | — |
+| `x-fjord.networking` | per service, `default` (the network the install was told to use) or `private` (a segment only the stack's services reach), `*` for the rest | — |
+| `x-fjord.hostnames` | per service, the variable its consumers read to find it; fjord sets it to the service name and container DNS resolves it | — |
+| `x-fjord.appjail` | the AppJail bundle (`director`, `makejail`, `template_conf`, `env_defaults`, `extras`), run as-is by `appjail-director` | — |
+| `x-fjord.choices` | — | a stack's questions answered at install: a database (SQLite, PostgreSQL, MariaDB, your own) or a part to run with or without; fjord 0.4 |
+| `x-fjord.host` | — | `vnet_required`, `vnet_bridge`, `devfs_rules`, `min_freebsd_version` |
+| Jail annotations | `org.freebsd.jail.*` in `annotations:` (podman via ocijail; AppJail via the bundle's jail template) | — |
+| Catalog | `sources.json` + per source `catalog.json`, `manifests/<app>.yaml`, `icons/`; several catalogs merged in one store, the source picked at install. Tools (`class: cli`) and base images are left out | `catalog_version`, `maintainer`, `generated`, `updated` |
+| Install | manifest → App data folders → pre-flight (ports, folders, the tag's architecture) → networks (DHCP, static, private) → `.env` → engine | `min_freebsd_version` and VNET checks, `zfs create`, devfs rules |
+| Teardown | stop and remove; app data kept unless asked to delete it; a private network goes with its stack | — |
+| Update | per service, the change said in words (patch, minor, major, a new build) with the package diff; recreate, a 30 s health watch, roll back; `.env` kept | delta wizard for new variables |
+
+--- | :--- | :--- |
 | `x-fjord.info` | `name`, `description`, `category`, `class` (`service`, `stack`), `icon`, `version`, `architectures`, `web_url` / `web_port` for the Open link | `requires`, `health_url`, classes `cli` / `agent` / `gui` |
 | `x-fjord.variables` | types `port`, `string`, `secret`, `path`, `zfs_dataset` (a folder under App data + `host_permissions`), `optional`, `label` | `network_interface`, real ZFS datasets with `zfs_properties` |
 | `x-fjord.host` | — | `vnet_required`, `vnet_bridge`, `devfs_rules`, `min_freebsd_version` |
@@ -163,7 +178,7 @@ x-fjord:
 | `name` | Yes | Human-readable application title. |
 | `description` | Yes | Summary of the application's functionality. |
 | `category` | Yes | Categorization group (e.g. `Media`, `Storage`, `Network`). |
-| `class` | Yes | Application execution class (`service`, `cli`, `agent`, `gui`). |
+| `class` | Yes | Application execution class (`service`, `stack`, `cli`, `agent`, `gui`). |
 | `icon` | Yes | URL to a 1:1 aspect ratio PNG, WebP, or SVG icon. |
 | `version` | No | Application release version string. |
 | `architectures` | No | List of architectures the image is built for (e.g. `["amd64"]`). |
@@ -173,7 +188,8 @@ x-fjord:
 #### Application Classes (`class`)
 
 - **`service`**: Runs persistently and exposes a web interface or network service. The UI displays live status and an **Open** button linking to `health_url`.
-- **`cli`**: A run-once command-line utility. The UI displays an execution snippet rather than a persistent service card.
+- **`stack`**: Several services that make one application (an app with its database and cache). The compose holds all of them; `networking` and `hostnames` say where each goes and how the others find it.
+- **`cli`**: A run-once command-line utility. The UI displays an execution snippet rather than a persistent service card. Catalogs leave these out of the store.
 - **`agent`**: A background daemon without a user-facing HTTP endpoint. The UI shows running/stopped state without an Open link.
 - **`gui`**: Reserved for desktop/graphical applications.
 
@@ -232,7 +248,23 @@ host_permissions:
 
 ---
 
-### 2.4 FreeBSD Jail Annotations
+### 2.4 `networking` and `hostnames` (Stacks)
+
+A stack knows which of its services is the one people open and which are its database and cache; whoever installs it should not have to say.
+
+```yaml
+x-fjord:
+  networking:
+    immich-server: default   # the network the install was told to use
+    "*": private             # a segment only this stack's services reach
+  hostnames:
+    database: DB_HOSTNAME    # the variable immich-server reads to find its database
+    redis: REDIS_HOSTNAME
+```
+
+With container DNS a service is reachable at its own name, so the client sets each `hostnames` variable to the service name: nothing to allocate or write back.
+
+### 2.5 FreeBSD Jail Annotations
 
 Privileges required by containerized workloads are declared natively within the service's `annotations:` block:
 
