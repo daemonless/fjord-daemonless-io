@@ -51,8 +51,9 @@ bridges, as if it were another machine plugged into the same switch.
 
 **What it needs on the host**
 
-- The [cni-epair](https://github.com/daemonless/cni-epair) plugin. fjord
-  offers to install it: an **Install** button in the setup wizard and on the
+- The [cni-epair](https://github.com/daemonless/cni-epair) plugin:
+  `pkg install cni-epair` (the fjord package already has it). Without the
+  package, fjord offers an **Install** button in the setup wizard and on the
   **System** page (see [Installation](install.md#1-host-prerequisites)).
 - A bridge with the host's network card (or a VLAN on it) as a member. If the
   host has none, **Networks → New network** shows the exact commands to create

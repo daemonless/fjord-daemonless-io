@@ -35,15 +35,16 @@ Follow the directions to set up [Podman](https://daemonless.io/guides/quick-star
     ```
 
 - **LAN networks** (a container with an address of its own on your network):
-  the [cni-epair](https://github.com/daemonless/cni-epair) plugin. It is not in
-  the ports tree, so fjord installs it for you: the setup wizard and the
-  **System** page show an **Install** button while it is missing, which fetches
-  a pinned release and checks its checksum. By hand, the same thing is:
+  the [cni-epair](https://github.com/daemonless/cni-epair) plugin
+  (`sysutils/cni-epair`; the fjord package pulls it in with the Podman engine):
 
     ```sh
-    fetch -o /usr/local/libexec/cni/epair https://raw.githubusercontent.com/daemonless/cni-epair/v1.1.1/epair
-    chmod 755 /usr/local/libexec/cni/epair
+    pkg install -y cni-epair
     ```
+
+    Where the package is not available yet, the setup wizard and the
+    **System** page show an **Install** button while it is missing, which
+    fetches a pinned release and checks its checksum.
 
     Without it everything still runs on published ports; see
     [Networking](networking.md) for what LAN networks add and how to set one up.
@@ -56,6 +57,16 @@ fjord is verified on FreeBSD 15.1 (amd64 and arm64).
 ---
 
 ## 2. Installing fjord
+
+=== "Package"
+
+    `sysutils/fjord` installs `fjordd` and its rc script, and pulls in both engines: podman, podman-compose, ocijail, cni-dnsname and cni-epair for Podman; appjail and appjail-director for AppJail.
+
+    ```sh
+    pkg install -y fjord
+    ```
+
+    New packages reach the `latest` set first and `quarterly` from 2027Q1. On `quarterly` until then, switch to `latest` (`/usr/local/etc/pkg/repos/FreeBSD.conf`: `url: "pkg+https://pkg.FreeBSD.org/${ABI}/latest"`) or build the port.
 
 === "Release binary"
 
@@ -70,15 +81,11 @@ fjord is verified on FreeBSD 15.1 (amd64 and arm64).
 
 === "Port"
 
-    The port from the [daemonless ports overlay](https://github.com/daemonless/freebsd-ports) installs `fjordd` and its rc script; its options pull in the engines (`PODMAN`: podman, podman-compose, cni-dnsname — `APPJAIL`: appjail, appjail-director; both on by default, `make config` to change). For LAN networks, fjord installs the cni-epair plugin from its setup wizard. Install those from packages first, or `make` builds each of them from source. It builds against the ports tree in `/usr/ports`.
+    Its options pick the engines (`PODMAN`: podman, podman-compose, ocijail, cni-dnsname, cni-epair — `APPJAIL`: appjail, appjail-director; both on by default, `make config` to change). Install those from packages first, or `make` builds each of them from source.
 
     ```sh
-    pkg install -y git podman sysutils/podman-compose appjail sysutils/py-director
-    git clone https://github.com/daemonless/freebsd-ports
-    cd freebsd-ports/sysutils/fjord && make install clean
+    cd /usr/ports/sysutils/fjord && make install clean
     ```
-
-    For the AppJail engine add `pkg install -y appjail sysutils/py-director`.
 
 === "git clone"
 

@@ -55,17 +55,25 @@ hide:
     sysrc fjordd_enable=YES && service fjordd start    # then open http://<host>:3567
     ```
 
-=== "Port"
+=== "Package"
 
     ```sh
-    pkg install -y git podman sysutils/podman-compose appjail sysutils/py-director   # both engines, from packages
-    git clone https://github.com/daemonless/freebsd-ports
-    cd freebsd-ports/sysutils/fjord && make install clean
+    pkg install -y fjord
 
     sysrc fjordd_enable=YES && service fjordd start    # then open http://<host>:3567
     ```
 
-    The port installs `fjordd` and its rc script; its options pull in both engines (`make config` to pick). Installing them from packages first means `make` only builds fjord.
+    Pulls in both engines. Packages are in the `latest` set first, and in `quarterly` from 2027Q1.
+
+=== "Port"
+
+    ```sh
+    cd /usr/ports/sysutils/fjord && make install clean
+
+    sysrc fjordd_enable=YES && service fjordd start    # then open http://<host>:3567
+    ```
+
+    `make config` picks the engines. Installing them from packages first means `make` only builds fjord.
 
 === "git clone"
 
