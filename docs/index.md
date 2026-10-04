@@ -26,14 +26,18 @@ hide:
       <span class="window-dot red"></span>
       <span class="window-dot yellow"></span>
       <span class="window-dot green"></span>
-      <span class="window-title">fjord — app store</span>
+      <span class="window-title">fjord</span>
     </div>
-    <a href="img/store-dark.png" class="glightbox">
-      <img src="img/store-dark.png#only-dark" alt="The fjord App Store interface" loading="lazy">
-    </a>
-    <a href="img/store-light.png" class="glightbox">
-      <img src="img/store-light.png#only-light" alt="The fjord App Store interface" loading="lazy">
-    </a>
+    <div class="fj-demo" role="img" aria-label="fjord: installing Radarr from the App Store, then updating Zensical with its package diff">
+      <video class="fj-demo-dark" muted loop playsinline preload="metadata" poster="img/demo/fjord-demo-dark.jpg">
+        <source src="img/demo/fjord-demo-dark.webm" type="video/webm">
+        <source src="img/demo/fjord-demo-dark.mp4" type="video/mp4">
+      </video>
+      <video class="fj-demo-light" muted loop playsinline preload="metadata" poster="img/demo/fjord-demo-light.jpg">
+        <source src="img/demo/fjord-demo-light.webm" type="video/webm">
+        <source src="img/demo/fjord-demo-light.mp4" type="video/mp4">
+      </video>
+    </div>
   </div>
 </div>
 

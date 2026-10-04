@@ -18,6 +18,7 @@ extra_css = [
 extra_javascript = [
   "https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js",
   "javascripts/lightbox.js",
+  "javascripts/demo-video.js",
 ]
 
 nav = [
