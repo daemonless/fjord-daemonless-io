@@ -30,6 +30,21 @@ interfaces, each on a network), **host** (this host's own network stack), or
 interfaces. The built-in bridge can sit next to a LAN network on one
 service, and a service on the bridge keeps its published ports.
 
+```mermaid
+flowchart TD
+    subgraph LAN["LAN Network (cni-epair)"]
+        Frontend["Web Frontend: 192.168.5.25"]
+    end
+    subgraph Bridge["Host Bridge (cni-rdr / PF)"]
+        PubService["Service on Bridge: host:8181"]
+    end
+    subgraph Private["Private Stack Network (cni-dnsname)"]
+        DB["Database / Redis Sidecar"]
+    end
+    Frontend -->|Internal DNS| DB
+    PubService -->|Internal DNS| DB
+```
+
 !!! note "Private is not isolated yet"
     In 0.3 "private" means not reachable from your LAN. Stacks on the same
     host can still reach each other's private networks; isolation is 0.3.6.
@@ -54,7 +69,7 @@ bridges, as if it were another machine plugged into the same switch.
 - The [cni-epair](https://github.com/daemonless/cni-epair) plugin:
   `pkg install cni-epair` (the fjord package already has it). Without the
   package, fjord offers an **Install** button in the setup wizard and on the
-  **System** page (see [Installation](install.md#1-host-prerequisites)).
+  **System** page (see [Installation](install.md)).
 - A bridge with the host's network card (or a VLAN on it) as a member. If the
   host has none, **Networks → New network** shows the exact commands to create
   one, both for now and in `rc.conf` for every boot.
