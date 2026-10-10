@@ -1,95 +1,81 @@
 ---
 title: "Installation & Service Setup"
-description: "How to install and configure fjord on FreeBSD: host prerequisites, Podman and AppJail engine toolchains, rc.d service management, and environment configuration."
+description: "How to install and run fjord on FreeBSD: package installation, starting the daemon, host setup, and configuration."
 ---
 
 # Installation &amp; Service Setup
 
-fjord runs as a standalone daemon (`fjordd`) managed by an `rc.d` service script. It interacts with your host's container engines—Podman, AppJail, or both—via local Unix sockets and standard CLI utilities.
+Installing `sysutils/fjord` from official FreeBSD binary packages automatically installs `fjordd`, its `rc.d` service script, both container engines (Podman and AppJail), and all required networking plugins.
 
 ---
 
-## 1. Host Prerequisites
+## 1. Quick Install (FreeBSD Package)
 
-Follow the directions to set up [Podman](https://daemonless.io/guides/quick-start/#podman) and/or [AppJail](https://daemonless.io/guides/quick-start/#appjail) in the Daemonless Quick Start guide for packages, kernel settings, and PF firewall anchors. That guide is the single source of truth for host setup; this page only adds what fjord needs on top of it:
+Install `sysutils/fjord` and start the daemon:
 
-- **Podman**: fjord talks to Podman over `/var/run/podman/podman.sock` (requires `ocijail` 0.6.0 or newer). Enable and start `podman_service`:
+```sh
+pkg install -y fjord
 
-    ```sh
-    sysrc podman_service_enable=YES
-    service podman_service start
-    ```
+sysrc fjordd_enable=YES
+service fjordd start
+```
 
-- **AppJail**: fjord drives `appjail-director` instead of calling `appjail` directly (requires AppJail 5.5.0 or newer). Install `py-director`:
+### Enabling Podman
 
-    ```sh
-    pkg install -y sysutils/py-director
-    ```
+If you plan to deploy stacks using the Podman engine, enable and start the Podman API service socket:
 
-- **Name resolution between a stack's services** (podman): the `cni-dnsname`
-  plugin, so an app finds its database by name. Without it a multi-service app
-  starts, cannot find its database, and restarts over and over:
+```sh
+sysrc podman_service_enable=YES
+service podman_service start
+```
 
-    ```sh
-    pkg install -y cni-dnsname
-    ```
+### Accessing the Web Interface
 
-- **LAN networks** (a container with an address of its own on your network):
-  the [cni-epair](https://github.com/daemonless/cni-epair) plugin
-  (`sysutils/cni-epair`; the fjord package pulls it in with the Podman engine):
+Open your browser to:
 
-    ```sh
-    pkg install -y cni-epair
-    ```
+```text
+http://<host-ip>:3567
+```
 
-    Where the package is not available yet, the setup wizard and the
-    **System** page show an **Install** button while it is missing, which
-    fetches a pinned release and checks its checksum.
+On first visit, the setup wizard will verify your host environment, ask where App Data goes, and initialize the application catalog.
 
-    Without it everything still runs on published ports; see
-    [Networking](networking.md) for what LAN networks add and how to set one up.
-
-fjord is verified on FreeBSD 15.1 (amd64 and arm64).
-
-!!! tip "Automated Diagnostics"
-    If you install `fjordd` before configuring all prerequisites, the first-run wizard and the **System** dashboard will identify missing packages, dead sockets, or unconfigured PF anchors and display exact shell remediation commands.
+!!! tip "Automated Diagnostics & Fixes"
+    `fjordd` automatically audits your FreeBSD host environment. If any kernel parameters, Packet Filter (PF) firewall anchors, or sockets require attention, the setup wizard and the **System** dashboard will highlight them with copy-paste shell remediation commands.
 
 ---
 
-## 2. Installing fjord
+## 2. Alternative Installation Methods
 
-=== "Package"
+??? "Release binary"
 
-    `sysutils/fjord` installs `fjordd` and its rc script, and pulls in both engines: podman, podman-compose, ocijail, cni-dnsname and cni-epair for Podman; appjail and appjail-director for AppJail.
-
-    ```sh
-    pkg install -y fjord
-    ```
-
-    New packages reach the `latest` set first and `quarterly` from 2027Q1. On `quarterly` until then, switch to `latest` (`/usr/local/etc/pkg/repos/FreeBSD.conf`: `url: "pkg+https://pkg.FreeBSD.org/${ABI}/latest"`) or build the port.
-
-=== "Release binary"
-
-    Every [release](https://github.com/daemonless/fjord/releases) ships static `fjordd` binaries for FreeBSD amd64 and arm64 with the UI embedded, the rc script, and a source tarball (vendored modules, prebuilt UI):
+    Every [release](https://github.com/daemonless/fjord/releases) ships static `fjordd` binaries for FreeBSD amd64 and arm64 with the web UI embedded:
 
     ```sh
     fetch https://github.com/daemonless/fjord/releases/latest/download/fjordd-freebsd-$(uname -m)
     fetch https://github.com/daemonless/fjord/releases/latest/download/fjordd.rc
     install -m 755 fjordd-freebsd-* /usr/local/sbin/fjordd
     install -m 755 fjordd.rc /usr/local/etc/rc.d/fjordd
+
+    sysrc fjordd_enable=YES
+    service fjordd start
     ```
 
-=== "Port"
+??? "FreeBSD Port"
 
-    Its options pick the engines (`PODMAN`: podman, podman-compose, ocijail, cni-dnsname, cni-epair — `APPJAIL`: appjail, appjail-director; both on by default, `make config` to change). Install those from packages first, or `make` builds each of them from source.
+    Build from the FreeBSD ports tree:
 
     ```sh
     cd /usr/ports/sysutils/fjord && make install clean
+
+    sysrc fjordd_enable=YES
+    service fjordd start
     ```
 
-=== "git clone"
+    `make config` allows selecting which engine dependencies (`PODMAN`, `APPJAIL`) are included.
 
-    Needs `go` and `npm`:
+??? "Build from Source (git clone)"
+
+    Requires `go` and `npm`:
 
     ```sh
     pkg install -y git go npm
@@ -98,61 +84,48 @@ fjord is verified on FreeBSD 15.1 (amd64 and arm64).
     go build -o fjordd ./cmd/fjordd
     install -m 755 fjordd /usr/local/sbin/fjordd
     install -m 755 packaging/fjordd.rc /usr/local/etc/rc.d/fjordd
+
+    sysrc fjordd_enable=YES
+    service fjordd start
     ```
 
 ---
 
-## 3. Starting the Service
+## 3. Configuration &amp; Environment
 
-Enable and start the `fjordd` daemon via FreeBSD's `service` framework:
+Storage locations, folder sets, catalogs, and default engine choices are managed directly through the web UI and saved to `/var/db/fjord/settings.json`.
 
-```sh
-sysrc fjordd_enable=YES
-service fjordd start
-```
-
-Verify service execution:
+Network listen addresses and directory roots can be overridden via `rc.conf`:
 
 ```sh
-service fjordd status
+# Example: Bind fjord to localhost on port 3567
+sysrc fjordd_env="FJORD_LISTEN=127.0.0.1:3567"
 ```
 
-Open `http://<host-ip>:3567` in your browser. The initial setup wizard will verify your host readiness, prompt for your default App Data storage directory, and load the default application catalog.
+| Variable | Default Value | Description |
+| :--- | :--- | :--- |
+| `FJORD_LISTEN` | `:3567` | TCP listen address and port for the HTTP server. |
+| `FJORD_STACKS_DIR` | `/var/db/fjord/stacks` | Directory where stack definitions and compose files reside. |
+| `FJORD_STORAGE_BASE` | `/var/db/fjord/containers` | Default App Data location for application state and databases. |
+| `FJORD_ENGINE` | `podman` | Default engine assigned to new stacks (`podman` or `appjail`). |
+| `FJORD_PODMAN_SOCKET` | `/var/run/podman/podman.sock` | Path to the Libpod API Unix socket. |
+| `FJORD_HOST_ADDR` | `127.0.0.1` | Host address probed during pre-flight port conflict detection. |
+| `FJORD_CATALOG_URL` | *(unset)* | Custom catalog URL loaded on initial install if replacing the default. |
 
 ---
 
-??? note "Configuration Reference (Environment Variables)"
+## 4. Security &amp; Network Access
 
-    Application-level options—including App Data datasets, custom Folder Sets, catalog feeds, and default engine selections—are configured through the web interface and persisted to `/var/db/fjord/settings.json`.
+`fjordd` executes with administrative privileges to manage jail lifecycles, configure ZFS datasets, and communicate with container sockets.
 
-    Daemon network endpoints and storage paths are controlled via environment variables passed through `rc.conf`:
+!!! warning "Local Trusted Mode"
+    fjord operates in local trusted mode without an integrated authentication barrier. Anyone with network access to port `3567` can control containers on the host with root equivalence.
 
-    ```sh
-    # Example: Bind fjord to localhost on port 3567
-    sysrc fjordd_env="FJORD_LISTEN=127.0.0.1:3567"
-    ```
+For production or remote hosts:
 
-    | Environment Variable | Default Value | Description |
-    | :--- | :--- | :--- |
-    | `FJORD_LISTEN` | `:3567` | TCP listen address and port for the HTTP/WebSocket server. |
-    | `FJORD_STACKS_DIR` | `/var/db/fjord/stacks` | Filesystem path where stack directories and compose files are maintained. |
-    | `FJORD_STORAGE_BASE` | `/var/db/fjord/containers` | Default App Data location for container state until explicitly changed in Settings. |
-    | `FJORD_ENGINE` | `podman` | Default engine assigned to new stack deployments (`podman` or `appjail`). |
-    | `FJORD_PODMAN_SOCKET` | `/var/run/podman/podman.sock` | Path to the Libpod API Unix socket. |
-    | `FJORD_HOST_ADDR` | `127.0.0.1` | Host address probed during pre-flight port conflict detection. |
-    | `FJORD_CATALOG_URL` | *(unset)* | Custom catalog URL loaded on initial installation if replacing the default. |
-
-??? warning "Security &amp; Network Exposure (Production Hosts)"
-
-    `fjordd` executes with administrative privileges in order to interact with `/var/run/podman/podman.sock`, create ZFS datasets, and launch FreeBSD jails.
-
-    **No authentication yet**: fjord currently operates in local trusted mode without an integrated authentication layer. Anyone with network access to the HTTP port can create, modify, and delete container workloads with host root equivalence.
-
-    For production or remote hosts:
-
-    1. **Bind to localhost**: Set `FJORD_LISTEN=127.0.0.1:3567` in `fjordd_env`.
-    2. **Access via Encrypted Tunnel**: Route traffic to fjord using an SSH local port forward:
-       ```sh
-       ssh -L 3567:127.0.0.1:3567 user@freebsd-host
-       ```
-    3. **VPN / Overlay Mesh**: Place the host on a private WireGuard or Tailscale network and bind fjord to the VPN interface IP.
+1. **Bind to loopback**: Set `FJORD_LISTEN=127.0.0.1:3567` in `fjordd_env`.
+2. **Access via SSH tunnel**:
+   ```sh
+   ssh -L 3567:127.0.0.1:3567 user@freebsd-host
+   ```
+3. **Or access via VPN**: Place the host on a private WireGuard or Tailscale network and bind fjord to the VPN interface address.

@@ -9,7 +9,7 @@ hide:
 <div class="hero">
   <div class="hero-content">
     <div class="hero-logo">
-      <img src="img/fjord-logo.svg" alt="fjord Logo">
+      <img class="no-glb" src="img/fjord-logo.svg" alt="fjord Logo">
     </div>
     <h1><span class="fj-f">f</span>jord</h1>
     <p class="hero-subtitle">FreeBSD Jail Orchestration Runtime Descriptor</p>
@@ -43,10 +43,19 @@ hide:
 
 <div class="fj-section fj-head">
   <h2>Up and running in a minute</h2>
-  <p class="section-desc">One static binary plus an rc script. The port also pulls in the whole podman toolchain; the other two assume the host is set up per the <a href="https://daemonless.io/guides/quick-start/">daemonless Getting Started</a> guide.</p>
+  <p class="section-desc">Install <code>sysutils/fjord</code> from FreeBSD packages to automatically pull in <code>fjordd</code>, its rc service script, and both container engines (Podman and AppJail).</p>
 </div>
 
 <div class="fj-install-tabs" markdown>
+
+=== "Package"
+
+    ```sh
+    pkg install -y fjord
+
+    sysrc fjordd_enable=YES
+    service fjordd start    # then open http://<host>:3567
+    ```
 
 === "Release binary"
 
@@ -56,25 +65,17 @@ hide:
     install -m 755 fjordd-freebsd-* /usr/local/sbin/fjordd
     install -m 755 fjordd.rc /usr/local/etc/rc.d/fjordd
 
-    sysrc fjordd_enable=YES && service fjordd start    # then open http://<host>:3567
+    sysrc fjordd_enable=YES
+    service fjordd start    # then open http://<host>:3567
     ```
-
-=== "Package"
-
-    ```sh
-    pkg install -y fjord
-
-    sysrc fjordd_enable=YES && service fjordd start    # then open http://<host>:3567
-    ```
-
-    Pulls in both engines. Packages are in the `latest` set first, and in `quarterly` from 2027Q1.
 
 === "Port"
 
     ```sh
     cd /usr/ports/sysutils/fjord && make install clean
 
-    sysrc fjordd_enable=YES && service fjordd start    # then open http://<host>:3567
+    sysrc fjordd_enable=YES
+    service fjordd start    # then open http://<host>:3567
     ```
 
     `make config` picks the engines. Installing them from packages first means `make` only builds fjord.
@@ -88,7 +89,8 @@ hide:
     install -m 755 fjordd /usr/local/sbin/fjordd
     install -m 755 packaging/fjordd.rc /usr/local/etc/rc.d/fjordd
 
-    sysrc fjordd_enable=YES && service fjordd start    # then open http://<host>:3567
+    sysrc fjordd_enable=YES
+    service fjordd start    # then open http://<host>:3567
     ```
 
 </div>
@@ -103,17 +105,17 @@ hide:
   <h2>Pure Compose + Declarative Host Hints</h2>
   <p class="section-desc">FJORD extends standard <code>compose.yaml</code> files with a reserved <code>x-fjord</code> block. Upstream definitions remain 100% valid on Linux/Docker, while compliant FreeBSD tools automatically provision ZFS datasets, map UID/GID permissions, and configure jail parameters.</p>
 
-```yaml
+```yaml title="compose.yaml"
 services:
   plex:
-    image: ghcr.io/daemonless/plex:latest
+    image: ghcr.io/daemonless/plex:latest # (1)
     ports:
-      - "${WEB_PORT}:32400"
+      - "${WEB_PORT}:32400" # (2)
     volumes:
-      - ${CONFIG_DATA}:/config
+      - ${CONFIG_DATA}:/config # (3)
       - ${MEDIA_PATH}:/media:ro
     annotations:
-      org.freebsd.jail.param.allow.raw_sockets: "1"
+      org.freebsd.jail.param.allow.raw_sockets: "1" # (4)
 
 # Declarative FreeBSD host provisioning & UI wizard schema
 x-fjord:
@@ -123,13 +125,13 @@ x-fjord:
     category: "Media"
     class: "service"
   host:
-    vnet_required: true
+    vnet_required: true # (5)
     devfs_rules:
-      - "add path 'drm/*' unhide"
+      - "add path 'drm/*' unhide" # (6)
   variables:
     - name: CONFIG_DATA
       label: "Config storage dataset"
-      type: zfs_dataset
+      type: zfs_dataset # (7)
       zfs_properties:
         recordsize: "16K"
         compression: "lz4"
@@ -138,6 +140,14 @@ x-fjord:
         gid: 972
         mode: "755"
 ```
+
+1.  :material-server: **FreeBSD-Native Image**: Runs directly on the FreeBSD kernel without Linux emulation or virtual machines.
+2.  :material-lan-connect: **Typed Port Binding**: Configured via the deployment wizard with automated host conflict detection.
+3.  :material-database: **App Data Folder**: A folder under the stack's App Data, created before launch.
+4.  :material-security: **Kernel Jail Parameter**: Standard OCI annotation translated directly into jail parameters by `ocijail`.
+5.  :material-network: **VNET Stack**: Asks for a jail with its own network stack. Part of the spec; fjord does not act on it yet.
+6.  :material-expansion-card: **Hardware Passthrough**: A devfs rule for GPU transcoding (`/dev/drm/*`). Part of the spec; fjord does not act on it yet.
+7.  :material-folder-cog: **Storage Automation**: fjord creates the folder and gives it to the app's UID/GID before launch. ZFS datasets with these properties are on the roadmap.
 
 </div>
 

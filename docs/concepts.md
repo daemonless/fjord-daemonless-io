@@ -32,6 +32,18 @@ When a stack is deployed:
 4. **Pre-flight**: The daemon creates missing data folders (owned by the app's PUID/PGID) and verifies host port availability.
 5. **Engine Invocation**: The target orchestrator launches the container workload natively on the FreeBSD kernel.
 
+```mermaid
+flowchart TD
+    Catalog["1. Catalog Discovery"] --> Alloc["2. Workspace /var/db/fjord/stacks/&lt;id&gt;"]
+    Alloc --> Synth["3. Synthesize compose.yaml &amp; .env"]
+    Synth --> Preflight["4. Pre-flight Checks (Ports &amp; Data Folders)"]
+    Preflight --> Engine{"5. Selected Engine"}
+    Engine -->|Podman| Pod["podman-compose + ocijail"]
+    Engine -->|AppJail| App["appjail-director + Makejail"]
+    Pod --> Jails["Native FreeBSD Jails"]
+    App --> Jails
+```
+
 ---
 
 ## 2. Container Engines
@@ -52,6 +64,32 @@ Configured engines can run concurrently on a single FreeBSD host. Engine selecti
 
 ### Jail Parameter Translation
 FreeBSD container images often require specific kernel jail parameters (for example, .NET applications like Sonarr/Radarr require `allow.mlock=true`, while database servers may require `allow.sysvipc=true`). In the Podman engine, these requirements are declared as OCI annotations (`org.freebsd.jail.*`) in `compose.yaml` and translated by `ocijail`. In the AppJail engine they ride in the jail template of the dbuild-generated bundle that fjord materializes for director.
+
+```mermaid
+flowchart LR
+    subgraph Spec["Filesystem Ground Truth"]
+        Compose["compose.yaml &amp; .env"]
+    end
+    subgraph Daemon["fjord Daemon (fjordd)"]
+        Preflight["Automated Pre-flights"]
+        Adapter["Engine Adapter Layer"]
+    end
+    subgraph Engines["Container Runtimes"]
+        Podman["Podman Socket (ocijail)"]
+        AppJail["AppJail Director"]
+    end
+    subgraph Kernel["FreeBSD 15 Kernel"]
+        Jail["Jail Isolation"]
+        Net["VNET / cni-epair / PF"]
+    end
+
+    Compose --> Daemon
+    Preflight --> Adapter
+    Adapter --> Podman
+    Adapter --> AppJail
+    Podman --> Kernel
+    AppJail --> Kernel
+```
 
 ---
 

@@ -103,19 +103,19 @@ FJORD uses the standard Compose Specification as its foundation. All application
 
 FreeBSD-specific metadata, UI wizard definitions, and host requirements reside entirely within a reserved root extension block: **`x-fjord`**.
 
-```yaml
+```yaml title="compose.yaml"
 services:
   plex:
-    image: ghcr.io/daemonless/plex:latest
+    image: ghcr.io/daemonless/plex:latest # (1)
     ports:
-      - "${WEB_PORT}:32400"
+      - "${WEB_PORT}:32400" # (2)
     volumes:
-      - ${CONFIG_DATA}:/config
+      - ${CONFIG_DATA}:/config # (3)
       - ${MEDIA_PATH}:/media:ro
     environment:
       - PLEX_CLAIM=${PLEX_TOKEN}
     annotations:
-      org.freebsd.jail.param.allow.raw_sockets: "1"
+      org.freebsd.jail.param.allow.raw_sockets: "1" # (4)
     restart: unless-stopped
 
 x-fjord:
@@ -128,11 +128,11 @@ x-fjord:
     icon: "https://daemonless.io/icons/plex.png"
 
   host:
-    vnet_required: true
+    vnet_required: true # (5)
     vnet_bridge: "${NETWORK_IFACE}"
     min_freebsd_version: "15.0"
     devfs_rules:
-      - "add path 'drm/*' unhide"
+      - "add path 'drm/*' unhide" # (6)
 
   variables:
     - name: NETWORK_IFACE
@@ -147,7 +147,7 @@ x-fjord:
 
     - name: CONFIG_DATA
       label: "Configuration Storage Dataset"
-      type: zfs_dataset
+      type: zfs_dataset # (7)
       default: "config"
       zfs_properties:
         recordsize: "16K"
@@ -166,6 +166,14 @@ x-fjord:
       label: "Plex Claim Token"
       type: secret
 ```
+
+1.  **Image Tag**: Standard OCI image reference. In FJORD compliant catalogs, points to FreeBSD-native container images.
+2.  **Port Mapping**: Compose port syntax with variable substitution resolved from `variables` schema below.
+3.  **Volume Binding**: Mapped to an automated host ZFS dataset definition declared in `x-fjord.variables`.
+4.  **OCI Jail Annotations**: Passed by `ocijail` to the FreeBSD `jail_set(2)` system call to set kernel parameters.
+5.  **VNET Directive**: Signals that this container requires an isolated VNET network stack rather than host networking.
+6.  **devfs Ruleset**: Hardware passthrough rules dynamically applied to the jail's devfs ruleset on start.
+7.  **ZFS Dataset Schema**: Directs the orchestrator to provision a tuned ZFS dataset before container startup.
 
 ---
 

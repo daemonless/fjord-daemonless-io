@@ -12,11 +12,9 @@ site_dir = "site"
 
 extra_css = [
   "stylesheets/extra.css",
-  "https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css",
 ]
 
 extra_javascript = [
-  "https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js",
   "javascripts/lightbox.js",
   "javascripts/demo-video.js",
 ]
@@ -46,11 +44,24 @@ features = [
   "navigation.tabs.sticky",
   "navigation.top",
   "navigation.tracking",
+  "navigation.path",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.progress",
+  "navigation.instant.preview",
+  "navigation.instant.prefetch",
   "search.highlight",
   "search.suggest",
+  "search.share",
   "toc.follow",
   "content.code.copy",
+  "content.code.select",
+  "content.code.annotate",
+  "content.action.copy",
+  "content.action.view",
   "content.tabs.link",
+  "content.tooltips",
+  "content.footnote.tooltips",
   "navigation.footer",
 ]
 
@@ -89,6 +100,10 @@ name = "Discord Community"
 
 [project.plugins]
 search = {}
+social = { cards_layout_options = { background_color = "#121316" } }
+glightbox = { auto = true, auto_themed = true, auto_caption = true, skip_classes = ["no-glb"] }
+gh-admonitions = {}
+llmstxt = { full_output = "llms-full.txt", sections = { Documentation = ["*.md"] } }
 
 [project.markdown_extensions.tables]
 [project.markdown_extensions.admonition]
@@ -96,8 +111,20 @@ search = {}
 [project.markdown_extensions.md_in_html]
 [project.markdown_extensions.pymdownx.details]
 [project.markdown_extensions.pymdownx.superfences]
+custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" }
+]
 [project.markdown_extensions.pymdownx.inlinehilite]
 [project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+
+[project.markdown_extensions.pymdownx.tasklist]
+custom_checkbox = true
+
+[project.markdown_extensions.pymdownx.magiclink]
+repo_url_shorthand = true
+user = "daemonless"
+repo = "fjord"
 
 [project.markdown_extensions.pymdownx.tabbed]
 alternate_style = true
