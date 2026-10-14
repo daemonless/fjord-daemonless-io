@@ -57,8 +57,6 @@ features = [
   "content.code.copy",
   "content.code.select",
   "content.code.annotate",
-  "content.action.copy",
-  "content.action.view",
   "content.tabs.link",
   "content.tooltips",
   "content.footnote.tooltips",
