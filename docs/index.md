@@ -101,7 +101,7 @@ hide:
   <p class="section-desc">FreeBSD already possesses superior kernel primitives for container isolation and storage: <strong>Jails</strong>, <strong>ZFS datasets</strong>, <strong>VNET</strong>, and <strong>devfs rulesets</strong>. FreeBSD does not need a proprietary vertical appliance. It needs an <strong>open, horizontal standard</strong>.</p>
 </div>
 
-<div class="fj-section fj-install">
+<div class="fj-section fj-install" markdown>
   <h2>Pure Compose + Declarative Host Hints</h2>
   <p class="section-desc">FJORD extends standard <code>compose.yaml</code> files with a reserved <code>x-fjord</code> block. Upstream definitions remain 100% valid on Linux/Docker, while compliant FreeBSD tools automatically provision ZFS datasets, map UID/GID permissions, and configure jail parameters.</p>
 
