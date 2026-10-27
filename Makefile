@@ -9,6 +9,7 @@ ZEN_ULIMIT = ulimit -n $$(ulimit -Hn) 2>/dev/null || true;
 build:
 	@echo "==> Building site with Zensical..."
 	$(ZEN_ULIMIT) $(ZENSICAL) build -f zensical.toml
+	@python3 scripts/check-rendered.py site
 
 serve: build
 	@echo "==> Serving site/ at http://0.0.0.0:8002"
