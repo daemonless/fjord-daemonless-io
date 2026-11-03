@@ -452,6 +452,39 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
   </div>
 </div>
 
+<div class="fj-section">
+  <h2>Friends in the FreeBSD Ecosystem</h2>
+  <p class="section-desc">fjord focuses purely on container and jail stack orchestration. If you want a full-featured hypervisor or a dedicated ZFS storage appliance, check out these projects in the FreeBSD ecosystem—both support <a href="https://daemonless.io">Daemonless</a> OCI images natively:</p>
+</div>
+
+<div class="grid cards fj-cards" markdown>
+
+-   :material-server: **Sylve**
+
+    ---
+
+    **Want a full-featured VM, Jail, and ZFS management platform?** Sylve brings Bhyve virtual machines, FreeBSD Jails, ZFS pools, networking, and clustering together in a single modern web UI—with native support for Daemonless OCI containers.
+
+    [:octicons-arrow-right-24: sylve.io](https://sylve.io)
+
+-   :material-nas: **FreeCORE**
+
+    ---
+
+    **Looking for a FreeBSD successor to TrueNAS CORE / alternative to TrueNAS SCALE?** FreeCORE carries the TrueNAS CORE legacy forward on FreeBSD 15 and OpenZFS, giving you a full storage appliance with native Daemonless container support.
+
+    [:octicons-arrow-right-24: freecore.org](https://freecore.org)
+
+-   :material-cube-outline: **AppJail**
+
+    ---
+
+    **Want deep CLI jail automation and orchestration?** AppJail is the powerhouse FreeBSD-native jail framework and first-class engine backend in fjord.
+
+    [:octicons-arrow-right-24: appjail.readthedocs.io](https://appjail.readthedocs.io)
+
+</div>
+
 <div class="fj-section fj-cta">
   <a href="install/" class="md-button md-button--primary">Install fjord</a>
   <a href="spec/" class="md-button">Read the Specification</a>
