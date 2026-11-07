@@ -16,6 +16,7 @@ hide:
     <p class="hero-tagline">An open, vendor-neutral standard and native compose platform for FreeBSD. Deploy OCI container stacks directly as native jails with Podman or AppJail—zero VM overhead, zero proprietary appliance lock-in.</p>
     <div class="hero-buttons">
       <a href="install/" class="md-button md-button--primary">Get Started</a>
+      <a href="#video-walkthrough" class="md-button">Watch Walkthrough</a>
       <a href="spec/" class="md-button">Read the Spec</a>
       <a href="concepts/" class="md-button">Explore Architecture</a>
       <a href="https://daemonless.io/images/" class="md-button">Browse 80+ Apps</a>
@@ -93,6 +94,33 @@ hide:
     service fjordd start    # then open http://<host>:3567
     ```
 
+</div>
+
+<div class="fj-section" id="video-walkthrough">
+  <h2>See It in Action</h2>
+  <p class="section-desc">Watch a 6-minute walkthrough from a fresh FreeBSD 15 package install through Podman &amp; AppJail stacks, real LAN IP discovery, zero-config local HTTPS, image channel switching, adopting existing containers, and Linux support.</p>
+  <div class="window-frame fj-video-frame">
+    <div class="window-header">
+      <span class="window-dot red"></span>
+      <span class="window-dot yellow"></span>
+      <span class="window-dot green"></span>
+      <span class="window-title">fjord — 6-minute walkthrough</span>
+      <a href="https://youtu.be/8S3hEVyCUzc" target="_blank" rel="noopener" class="window-badge">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Watch on YouTube
+      </a>
+    </div>
+    <div class="fj-video-embed">
+      <iframe
+        src="https://www.youtube-nocookie.com/embed/8S3hEVyCUzc?rel=0"
+        title="Fjord: Self-Hosted Container &amp; Jail App Store for FreeBSD (Podman, AppJail &amp; Linux)"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen
+        loading="lazy">
+      </iframe>
+    </div>
+  </div>
 </div>
 
 <div class="fj-section">
@@ -487,6 +515,7 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
 
 <div class="fj-section fj-cta">
   <a href="install/" class="md-button md-button--primary">Install fjord</a>
+  <a href="https://youtu.be/8S3hEVyCUzc" class="md-button">Watch on YouTube</a>
   <a href="spec/" class="md-button">Read the Specification</a>
   <a href="concepts/" class="md-button">Explore Architecture</a>
   <a href="https://github.com/daemonless/fjord" class="md-button">GitHub Repository</a>
