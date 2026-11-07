@@ -487,7 +487,7 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
 
 <div class="grid cards fj-cards" markdown>
 
--   :material-server: **Sylve**
+-   ![Sylve logo](img/logos/sylve.svg){ .fj-logo } **Sylve**
 
     ---
 
@@ -495,7 +495,7 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
 
     [:octicons-arrow-right-24: sylve.io](https://sylve.io)
 
--   :material-nas: **FreeCORE**
+-   ![FreeCORE logo](img/logos/freecore.svg){ .fj-logo } **FreeCORE**
 
     ---
 
@@ -503,7 +503,7 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
 
     [:octicons-arrow-right-24: freecore.org](https://freecore.org)
 
--   :material-cube-outline: **AppJail**
+-   ![AppJail logo](img/logos/appjail.png){ .fj-logo } **AppJail**
 
     ---
 
