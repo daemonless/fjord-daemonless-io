@@ -1,58 +1,73 @@
 ---
 title: "fjord Roadmap"
-description: "What comes after fjord 0.2.0: stack dependencies and boot control, authentication, ZFS-backed app data with snapshots, and a fjord cluster that migrates stacks between hosts."
+description: "What comes after fjord 0.4.3: a ZFS dataset per app, then a fjord that is safe to leave alone and keeps itself up to date (jobs, history, notifications, auto-update with snapshots), then scheduled snapshots, compose history and 1.0."
 ---
 
 # Roadmap
 
-What is planned after 0.2.0, in the order it is likely to land. Nothing here is a promise; issues and pull requests on [daemonless/fjord](https://github.com/daemonless/fjord) move things up.
+What is planned, in the order it is likely to land. Nothing here is a promise. Issues and pull requests on [daemonless/fjord](https://github.com/daemonless/fjord) move things up. What already shipped is in the [changelog](https://github.com/daemonless/fjord/blob/main/CHANGELOG.md).
 
 ---
 
-## 0.3 — Dependencies and boot
+## 0.4.3: in release candidates now
 
-### Stack dependencies
-Within a stack, compose `depends_on` already orders services (and the AppJail director bundle does the same). Between stacks there is nothing yet. Planned: `x-fjord: depends_on: [postgres]`, settable from the Resources tab, honoured in three places:
+Update all with a diff of what changes, a `fjord` command for the shell, typed settings in the install wizard, a stack's parts in the App Store, health checks with a recovery policy per stack, a banner for host and engine problems, and a round of hardening. Try it from the [v0.4.3 pre-releases](https://github.com/daemonless/fjord/releases).
 
-- **Start** brings dependencies up first and says so in Output.
-- **Stop / Delete** warn when another stack depends on this one.
-- **Boot** orders stacks by the dependency graph.
+## 0.4.4: a dataset per app
 
-Cycles are rejected at save.
+When the App data location is on ZFS, a new install gets a dataset of its own (`zroot/containers/radarr`), not a plain folder inside a shared one. It comes before auto-update because auto-update's snapshots need it: a snapshot then covers one app, and restoring is a rollback rather than a copy. On a host or location that is not ZFS (Linux, UFS), app data stays in plain folders. Stacks you already have are left as they are until 0.5.0 can move them.
 
-### Start at boot
-Today every stack that was running comes back on boot, in directory order. Planned: a per-stack **Boot** setting — *on*, *off*, or *manual* (never auto-start) — shown in the stack list and on the stack page; boot order from dependencies with an optional explicit priority; a stagger so ten stacks don't all pull at once.
+## 0.5.0: safe to leave alone, keeps itself up to date
 
-## 1.0 gate — Authentication
+### Jobs, Cancel and History
+- **Every action is a job** that fjord runs itself: install, update, start, stop, delete, prune. An Activity tray lists what is running, queued and recently done. A second action on a busy stack waits its turn instead of being refused.
+- **Cancel** stops a running pull or health watch. A cancel in the middle of a recreate leaves the old container running, never none.
+- **History per stack**: every start, update, rollback and automatic run, with what triggered it and how it ended, plus what happened while you were away (stops, crashes and why, health changes). Roll back or restore data from any entry.
 
-There is none. A first-run administrator password, a session cookie, one middleware in front of the API and the terminal WebSocket. Nothing that faces the network is promoted out of "tech preview" before this.
+### Notifications and the catalog
+- **Notifications** to ntfy, Gotify, Discord, email or a webhook, per event, and an optional heartbeat URL for an outside monitor.
+- **New in the catalog**: a badge and a row for apps added recently, and a catalog's news as one line on the App Store.
+- **App notices**: an app can say "this update needs you to do something", and Update waits until you confirm.
+- **App changes, reviewed**: when an app's compose changes in the catalog, an installed stack lists the changes in words and applies them on top of your own edits.
 
-## After that, roughly in order
+### Auto-update and data safety
+- **Move an existing stack onto its own dataset**, as a job with progress: stop, copy, check, switch, start. The old folder is removed only once the app runs.
+- **A snapshot before every update**, the last three kept, and **Restore data** in one click: stop, roll the dataset back, roll the image back, start.
+- **Keep up to date** per stack, from *Notify* through *Rebuilds*, *Patch* and *Minor* to *All*, in a maintenance window, one stack at a time, with a health watch and automatic rollback. A **Schedules** page says what runs when, and offers Run now.
+- **Dependencies between stacks**: `x-fjord: depends_on`, started first, warned about on stop and delete, and used for boot order.
 
-- [ ] **Volumes per engine** — the Volumes page follows the default engine only; AppJail has no named volumes yet, so remote folders (NFS/SMB) need podman.
-- [ ] **Update policy per stack** — *manual* (today), *notify*, or *auto* on a schedule, with the digest pin as the brake. Pairs with **notifications** (webhook, Discord, email) for "updates available" and "stack crashed".
-- [ ] **Adopt a compose directory** — running podman containers and appjail jails are adoptable since 0.2.1; a directory of hand-written `compose.yaml` files or a director project checked out somewhere is next.
-- [ ] **Fix button on readiness checks** — run the safe, non-destructive fixes (`pkg install`, `service start`) from the UI with live output. Designed, not built.
-- [ ] **Persistent shells** — a shell that survives navigating away.
-- [ ] **Templates** — "New stack from…" a saved compose, for stacks no catalog has.
-- [ ] **Extensions** — out-of-process extensions (checks, folder providers, catalog sources, UI pages, later engines) installed as packages. Designed; needs the internal engine refactor first.
-- [ ] **Registry-verified architectures** — the store trusts each repo's declared build architectures.
-- [ ] **Shared services** — one database stack used by several apps, built on dependencies.
+### The host
+- **Clean up leftovers**: jails, network interfaces and address reservations that nothing uses any more. One click removes what fjord can prove it made.
+- **Networks come back after a reboot** before the stacks that need them.
+- **Private means private**: stacks on different private networks cannot reach each other.
+- **Better IPv6**: pinned addresses, Open links and published ports over v6, SLAAC on LAN networks.
+- **Ctrl+K**: jump to any stack, app or page.
 
-## ZFS-backed app data
+## 0.6.0: snapshots and compose history
 
-When the App data location is a ZFS dataset — which on a FreeBSD host it usually is — fjord should use ZFS rather than plain directories: a child dataset per app (`zroot/data/fjord/radarr`), so quotas, per-app usage and `zfs send` backups fall out; a **snapshot before every Update** with a **Rollback** button on the stack page; scheduled snapshots with retention. This is an operator-side policy of the App data location, never a per-manifest property: the same catalog has to work on UFS and Linux hosts, and pool tuning is not something an app author can know.
+- **Scheduled snapshots** with retention, and what changed between two snapshots.
+- **Per-app usage, quota and `zfs send`** on the datasets from 0.4.4.
+- **Compose history**: every successful deploy keeps its compose, `.env` and image digests; compare two, redeploy one.
 
-## Cluster and migration
+## 1.0
 
-The long-term shape: several fjord hosts that know each other, one UI over all of them, and a stack that can move between them.
+- **Compose checks with fixes**: on Save and before a start, mistakes fjord knows about (an address in use on the LAN, a .NET app without `allow.mlock`, `:latest` with auto-update) are said, with a one-click fix where the fix is certain.
+- **Release notes in Version…**, from the image's source repository.
+- **Logs** from every service of a stack in time order.
+- **Docs** for people setting fjord up for the first time: install, networks, updates, AppJail.
+- The UI tests run on every pull request.
 
-- **Peers** — each fjord registers the others (address + token; needs authentication first). The stack list shows every host's stacks; install picks a host.
-- **Migrate** — snapshot the app's dataset, `zfs send` it to the target while the stack keeps running, stop, send the final increment, recreate the stack on the target from its own files (compose, `.env`, bundle, icon), pre-flight there (engine, ports, folder sets — NFS resolves anywhere, local paths must exist), start, remove at the source. Dependencies move with the stack or are checked on the target.
-- **Replicate** — scheduled sends of a stack's dataset to a peer as a warm standby, and *Restore* from it.
+## After 1.0
 
-This is why authentication, dependencies and ZFS-backed data come first: each is a piece of this.
+- **Cluster and migration**: several fjord hosts in one UI; a stack moves between them with its data (snapshot, `zfs send`, final increment, recreate on the target), or keeps a warm standby on a peer.
+- Shared services, templates ("New stack from…"), extensions, persistent shells, signature checks on images.
+
+## Ideas, not scheduled
+
+- **Jails you build yourself**: a recipe (`Containerfile` or `Makejail`) that fjord builds, updates and rolls back like any other stack.
+- **VPN networks**: a WireGuard network a stack can join, with no way out if the tunnel drops.
+- **Kubernetes** as a third engine next to podman and AppJail: a single FreeBSD node where a stack is a pod. It waits on the node pieces being FreeBSD packages.
 
 ## Not planned
 
-- TLS termination in `fjordd` — a reverse proxy does it better.
+- TLS in `fjordd`. A reverse proxy in front of it does that better.
