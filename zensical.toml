@@ -4,7 +4,7 @@
 [project]
 site_name = "fjord"
 site_url = "https://fjord.daemonless.io"
-site_description = "FJORD (FreeBSD Jail Orchestration Runtime Descriptor) — An open standard and native compose platform for FreeBSD containers."
+site_description = "FJORD (FreeBSD Jail Orchestration Runtime Descriptor): open standard, web UI, and CLI for managing container stacks on FreeBSD (Podman & AppJail) and Linux (Podman)."
 repo_url = "https://github.com/daemonless/fjord"
 repo_name = "daemonless/fjord"
 edit_uri = "https://github.com/daemonless/fjord-daemonless-io/edit/main/docs/"
@@ -15,7 +15,6 @@ extra_css = [
 ]
 
 extra_javascript = [
-  "javascripts/lightbox.js",
   "javascripts/demo-video.js",
 ]
 
@@ -24,6 +23,7 @@ nav = [
   { "Docs" = [
     { "Installation" = "install.md" },
     { "Operations" = "using.md" },
+    { "CLI" = "cli.md" },
     { "Updates" = "updates.md" },
     { "Networking" = "networking.md" },
     { "Architecture" = "concepts.md" },
@@ -103,7 +103,23 @@ search = {}
 social = { cards_layout_options = { background_color = "#121316" } }
 glightbox = { auto = true, auto_themed = true, auto_caption = true, skip_classes = ["no-glb"] }
 gh-admonitions = {}
-llmstxt = { full_output = "llms-full.txt", sections = { Documentation = ["*.md"] } }
+
+[project.plugins.privacy]
+assets_include = [
+  "fonts.googleapis.com/*",
+  "fonts.gstatic.com/*",
+  "unpkg.com/glightbox*",
+  "unpkg.com/mermaid*",
+]
+
+[project.plugins.llmstxt]
+full_output = "llms-full.txt"
+markdown_description = "FJORD (FreeBSD Jail Orchestration Runtime Descriptor): open Compose specification, web UI, and CLI for deploying and operating OCI container stacks on FreeBSD (Podman & AppJail) and Linux (Podman)."
+
+[project.plugins.llmstxt.sections]
+"Overview & Installation" = ["index.md", "install.md"]
+"Operations, CLI & Networking" = ["using.md", "cli.md", "updates.md", "networking.md", "troubleshooting.md"]
+"Architecture, Roadmap & Specification" = ["concepts.md", "roadmap.md", "spec.md"]
 
 [project.markdown_extensions.tables]
 [project.markdown_extensions.admonition]
@@ -132,3 +148,6 @@ alternate_style = true
 [project.markdown_extensions.pymdownx.emoji]
 emoji_index = "zensical.extensions.emoji.twemoji"
 emoji_generator = "zensical.extensions.emoji.to_svg"
+
+[project.markdown_extensions.zensical.extensions.preview]
+targets = { include = ["*.md"], exclude = ["index.md"] }

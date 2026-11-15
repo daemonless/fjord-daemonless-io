@@ -1,171 +1,109 @@
 ---
 title: "Architecture & Core Concepts"
-description: "How fjord models FreeBSD container orchestration: stacks on disk, engine-agnostic abstraction (Podman and AppJail), catalog manifests, storage boundaries, and pre-flight diagnostics."
+description: "How fjord models container orchestration on FreeBSD and Linux: filesystem-first stacks, Podman and AppJail engines, catalog manifests, storage boundaries, and continuous health checks."
 ---
 
 # Architecture &amp; Core Concepts
 
-fjord is designed around a single architectural philosophy: **the filesystem is the source of truth**. Rather than encapsulating container definitions in an internal database or proprietary configuration format, fjord manages native FreeBSD jails by reading and writing standard compose specifications and environment files directly on disk.
+`fjord` is built around one core rule: **the filesystem is the source of truth**. Rather than locking container definitions inside an internal database, `fjordd` reads and writes standard Compose files (or AppJail director bundles) and `.env` files directly on disk, driven identically by the web UI and the [`fjord` CLI](cli.md).
 
-```
-/var/db/fjord/stacks/<stack-id>/
-├── compose.yaml            # Podman engine specification
-├── appjail-director.yml    # AppJail director orchestration spec
-├── Makejail                # AppJail build recipe
-├── .env                    # User configuration & environment variables
-└── state.json              # Stack metadata (engine binding, status, channel)
+```text
+/var/db/fjord/
+├── fjordd.sock             # Root-only local Unix socket for the fjord CLI
+├── settings.json           # Storage roots, Folder Sets, catalogs, names link
+├── auth.json               # Hashed administrator credentials & active sessions
+└── stacks/<stack-id>/
+    ├── compose.yaml            # Podman engine specification
+    ├── appjail-director.yml    # AppJail director orchestration spec (FreeBSD)
+    ├── Makejail                # AppJail build recipe (FreeBSD)
+    ├── .env                    # Configured variables, ports & paths
+    └── state.json              # Engine binding, pinned/rollback digests, recovery policy
 ```
 
-Because fjord maintains zero private state locks, administrators can inspect, version, or modify stack files directly with standard shell tools (`vi`, `git`, etc.). Running `podman-compose` or `appjail-director` inside a stack directory yields the exact same behavior as triggering actions through fjord's web interface.
+Because there are no opaque lock files, operators can version `/var/db/fjord/stacks/` in Git, inspect files with standard shell tools, or invoke `podman-compose` / `appjail-director` directly.
 
 ---
 
 ## 1. Stacks
 
-A **stack** represents a cohesive application deployment. A stack may encompass a single service (such as Radarr or Caddy) or an interconnected multi-container architecture (such as Immich with its PostgreSQL and Redis sidecars).
-
-When a stack is deployed:
-
-1. **Workspace Allocation**: fjord creates an isolated directory in `/var/db/fjord/stacks/<id>`.
-2. **Template Synthesis**: The chosen catalog manifest generates the engine specification files (`compose.yaml` or `appjail-director.yml`).
-3. **Environment Generation**: Configured variables, port bindings, and storage mounts are written to `.env`.
-4. **Pre-flight**: The daemon creates missing data folders (owned by the app's PUID/PGID) and verifies host port availability.
-5. **Engine Invocation**: The target orchestrator launches the container workload natively on the FreeBSD kernel.
+A **stack** is a self-contained application deployment: either a single container (such as Radarr or Caddy) or a multi-service topology (such as Immich with PostgreSQL, Redis, and machine-learning sidecars, each placed on the right LAN or private network).
 
 ```mermaid
 flowchart TD
-    Catalog["1. Catalog Discovery"] --> Alloc["2. Workspace /var/db/fjord/stacks/&lt;id&gt;"]
-    Alloc --> Synth["3. Synthesize compose.yaml &amp; .env"]
-    Synth --> Preflight["4. Pre-flight Checks (Ports &amp; Data Folders)"]
-    Preflight --> Engine{"5. Selected Engine"}
-    Engine -->|Podman| Pod["podman-compose + ocijail"]
-    Engine -->|AppJail| App["appjail-director + Makejail"]
-    Pod --> Jails["Native FreeBSD Jails"]
-    App --> Jails
+    Catalog["1. Catalog Manifest &amp; Plan"] --> Alloc["2. Workspace /var/db/fjord/stacks/&lt;id&gt;"]
+    Alloc --> Synth["3. Write compose.yaml / Director Bundle &amp; .env"]
+    Synth --> Preflight["4. Pre-flight Checks (Ports, Wire Probe &amp; Folders)"]
+    Preflight --> Engine{"5. Runtime Engine"}
+    Engine -->|FreeBSD Podman| PodBSD["podman-compose + ocijail"]
+    Engine -->|FreeBSD AppJail| App["appjail-director + Makejail"]
+    Engine -->|Linux Podman| PodLin["podman-compose + crun/runc"]
+    PodBSD --> Watch["6. Stay-Up Watch &amp; Optional HTTPS Name"]
+    App --> Watch
+    PodLin --> Watch
 ```
 
 ---
 
 ## 2. Container Engines
 
-fjord is architecturally engine-agnostic, decoupling compose specifications from the underlying execution runtime. It currently supports two container backends on FreeBSD, allowing administrators to choose the runtime best suited for each workload:
+`fjord` decouples application manifests from the execution backend:
 
-| Characteristic | Podman Engine | AppJail Engine |
-| :--- | :--- | :--- |
-| **Specification Format** | `compose.yaml` | `appjail-director.yml` + `Makejail` |
-| **CLI Orchestrator** | `podman-compose` | `appjail-director` |
-| **OCI Runtime** | `ocijail` | Native `jail(8)` via AppJail OCI |
-| **Networking Model** | CNI bridge (`cni-rdr`), host, LAN address via `cni-epair` (DHCP or pool) — see [Networking](networking.md) | Virtual bridge (`appjail-nat`), host network |
-| **Remote Volumes** | Native NFS and SMB named volumes | Host-mounted paths |
-| **Jail Annotation Mapping** | `annotations:` in `compose.yaml` | Jail parameters in director spec |
+| Characteristic | FreeBSD Podman | FreeBSD AppJail | Linux Podman |
+| :--- | :--- | :--- | :--- |
+| **Specification** | `compose.yaml` | `appjail-director.yml` + `Makejail` | `compose.yaml` |
+| **Orchestrator** | `podman-compose` | `appjail-director` | `podman-compose` |
+| **Runtime** | `ocijail` (`jail(8)`) | Native `jail(8)` via AppJail | `crun` / `runc` |
+| **LAN Networking** | `cni-epair` (VNET bridge/VLAN) | VNET / bridge or `appjail-nat` | `macvlan` + `netavark` |
+| **Remote Volumes** | Native NFS named volumes | Host-mounted paths | Native NFS &amp; SMB named volumes |
+| **Kernel Hints** | `org.freebsd.jail.*` annotations | Director jail template parameters | Capabilities, devices &amp; SELinux `:z` |
 
-### Engine Coexistence
-Configured engines can run concurrently on a single FreeBSD host. Engine selection is configured on a per-stack basis during initial deployment and preserved in `state.json`.
-
-### Jail Parameter Translation
-FreeBSD container images often require specific kernel jail parameters (for example, .NET applications like Sonarr/Radarr require `allow.mlock=true`, while database servers may require `allow.sysvipc=true`). In the Podman engine, these requirements are declared as OCI annotations (`org.freebsd.jail.*`) in `compose.yaml` and translated by `ocijail`. In the AppJail engine they ride in the jail template of the dbuild-generated bundle that fjord materializes for director.
-
-```mermaid
-flowchart LR
-    subgraph Spec["Filesystem Ground Truth"]
-        Compose["compose.yaml &amp; .env"]
-    end
-    subgraph Daemon["fjord Daemon (fjordd)"]
-        Preflight["Automated Pre-flights"]
-        Adapter["Engine Adapter Layer"]
-    end
-    subgraph Engines["Container Runtimes"]
-        Podman["Podman Socket (ocijail)"]
-        AppJail["AppJail Director"]
-    end
-    subgraph Kernel["FreeBSD 15 Kernel"]
-        Jail["Jail Isolation"]
-        Net["VNET / cni-epair / PF"]
-    end
-
-    Compose --> Daemon
-    Preflight --> Adapter
-    Adapter --> Podman
-    Adapter --> AppJail
-    Podman --> Kernel
-    AppJail --> Kernel
-```
+On FreeBSD, Podman and AppJail coexist on the same host and can be chosen per stack at install time.
 
 ---
 
 ## 3. Catalogs &amp; Manifests
 
-The fjord App Store consumes static, decoupled **catalogs**. A catalog is simply an HTTP-accessible endpoint publishing three components:
+The App Store consumes static HTTPS **catalogs** (`catalog.json`, `manifests/<id>.yaml`, and `icons/`):
 
-1. `catalog.json`: Fleet-wide metadata, categories, architectures, and available app entries.
-2. `manifests/<app>.yaml`: Per-application deployment schemas, required vs. optional ports, environment parameters, and default values.
-3. `icons/`: SVG and PNG brand icons for user interface display.
-
-### Default Catalog &amp; Custom Sources
-fjord ships with [catalog.daemonless.io](https://catalog.daemonless.io) enabled by default, which is continuously generated from FreeBSD-native images in the Daemonless fleet. Administrators can configure private or secondary catalog URLs in **Settings**; fjord merges all active catalogs into a unified store, tagging each application with its origin repository.
-
-### Release Channels
-Catalog manifests define release channels corresponding to image tag families:
-
-- `latest`: Tracks official upstream application releases (default for most workloads).
-- `pkg`: Tracks stable FreeBSD Quarterly binary packages.
-- `pkg-latest`: Tracks bleeding-edge FreeBSD Latest binary packages.
-
-### CPU Architecture Filtering
-Manifests specify supported host architectures (`amd64`, `arm64`). fjord knows the architecture it was built for (amd64 or arm64) and filters incompatible applications from view, whichever way round the mismatch is, preventing runtime architecture errors.
+- **OS-aware defaults**: Fresh FreeBSD hosts enable the **Daemonless** catalog (`130+` native FreeBSD images, stacks, and appliances); fresh Linux hosts enable the verified **Linux** catalog (`180+` install-tested LinuxServer.io images plus multi-OS Daemonless appliances).
+- **Multi-catalog merge**: Add private or custom HTTPS catalogs in **Settings → Catalogs** (or refresh via `fjord catalog refresh`). `fjordd` filters entries by host OS and CPU architecture (`amd64` / `arm64`).
+- **Release channels &amp; SBOMs**: Manifests expose release trains (`latest`, `pkg`, `pkg-latest`), install-time choices (`database=postgres`), typed settings, and image SBOMs used to compute package-level update diffs.
 
 ---
 
-## 4. Storage Architecture
+## 4. Storage Boundaries
 
-fjord enforces a strict architectural boundary between internal application state and external user data pools:
+`fjord` separates internal container state from shared user libraries:
 
-```
+```text
 Storage Layout
 ├── App Data Root (/var/db/fjord/containers/ or ZFS dataset)
-│   ├── radarr/
-│   │   └── config/      <-- Application config, SQLite databases, logs
-│   └── immich/
-│       ├── postgres/    <-- Relational database files
-│       └── machine-learning/
-└── User Data Pools (ZFS pools / NFS / SMB)
-    ├── /tank/media/movies/     <-- Persistent media library
-    ├── /tank/media/tv/
+│   ├── radarr/config/          <-- App config, SQLite DBs, logs
+│   └── immich/postgres/        <-- Internal database files
+└── Folder Sets (ZFS datasets / NFS / SMB)
+    ├── /tank/media/movies/     <-- Shared media pools mapped across stacks
     └── /tank/downloads/
 ```
 
-### App Data
-App Data encompasses the internal operational state of containers: configurations, databases, caches, and socket locks. Administrators configure one or more App Data roots in **Settings** (typically pointing to dedicated ZFS datasets such as `zroot/data/fjord`). fjord provisions application subdirectories automatically upon deployment.
-
-### Folder Sets
-Folder Sets represent your actual user data assets (media libraries, photo collections, document repositories, backups). Rather than re-entering absolute paths or connection URIs for every stack, administrators declare reusable **Folder Sets** once in **Settings**. When launching or editing a stack, choosing a folder set automatically maps the corresponding paths into the container specification.
-
-Folder Sets support:
-- Local filesystem paths and ZFS datasets.
-- NFS endpoints (`nfs://server/export`).
-- SMB shares (`smb://user@server/share`, supported on Linux hosts; on FreeBSD, NFS or local mount points are recommended due to SMB kernel protocol compatibility).
+- **App Data**: Internal state directories created automatically with the container's `PUID`/`PGID` (and labeled for SELinux on enforcing Linux hosts).
+- **Folder Sets**: Reusable host path groups (`Media`, `Downloads`, `Photos`, `Backups`) defined once in **Settings → Storage** and attached in one click during install.
 
 ---
 
-## 5. Pre-flight and Readiness Checks
+## 5. Daemon-Owned Verification &amp; Health
 
-Two layers keep a stack from failing for host reasons:
+Delayed outcomes belong to `fjordd`, never to an open browser tab:
 
-**Pre-flight** runs before every start and install:
-
-1. **Port collisions**: every published port — and, for `network_mode: host` services, every port the image exposes — is probed. A port held by another container is reported by that container's name; a port held by a host process is reported as in use.
-2. **Data folders**: missing bind-mount sources are created and chowned to the stack's `PUID`/`PGID`, so a sidecar never crashes on a root-owned cache directory.
-
-If pre-flight fails, the stack configuration is saved to disk without launching, so you can change a port or free it and start again.
-
-**Readiness checks** run on the System page (and in the first-run wizard) and cover the host itself: the libpod socket, `conmon`/`ocijail` and their versions, pf anchors (`cni-rdr/*` for podman, `appjail-nat/*` for AppJail), the AppJail toolchain and the fjord data root — each with *why* it matters and a copy-paste fix.
+1. **Pre-flight**: Probes ports, validates LAN/VLAN wire subnets and IP collisions, and creates App Data directories before launch.
+2. **Post-action stay-up watch**: Every install, update, apply, and rollback watches the target containers or jails to verify they stay running, then registers any requested [HTTPS name](networking.md#names-and-local-https).
+3. **Continuous health &amp; host conditions**: Background loops monitor container exit codes, restart counts, healthchecks, engine sockets, PF anchors, and `cni-epair` versions, triggering per-stack recovery policies (`do nothing`, `restart`, `stop`) and surfacing host issues in a persistent banner.
 
 ---
 
-## 6. Lifecycle
+## 6. Lifecycle Summary
 
-What fjord does today at each stage. The [FJORD Specification](spec.md) describes the fuller contract this is growing toward; its status table says which parts exist.
+See the [FJORD Specification](spec.md) for the wire schema and provider contracts:
 
-- **Install**: resolves the catalog manifest, computes the App data folders under `<App data>/<stack>/…`, runs pre-flight, provisions and chowns the folders, writes `.env` and the engine spec, then hands the stack to the engine.
-- **Delete**: stops the stack and removes it from fjord. Bind-mounted data always stays on disk; there is no purge option yet.
-- **Update**: pulls the newest image for the stack's release channel and recreates the containers or jails. Values already in `.env` are kept; a manifest that gained new variables is not diffed yet (see the roadmap).
+- **Install**: Computes the install plan (`/api/apps/<id>/plan`), runs pre-flight, provisions App Data folders, writes `.env` and compose/director files, launches the stack, verifies stay-up health, and registers its optional HTTPS name.
+- **Update &amp; Rollback**: Diffs versions and SBOM packages, pulls new images safely before teardown, watches new containers for 30 seconds, and records previous digests for one-click rollback.
+- **Delete**: Verifies the stack is stopped, removes containers/jails, private networks, and registered proxy names, and preserves App Data on disk unless `--purge-data` / data deletion is explicitly confirmed.

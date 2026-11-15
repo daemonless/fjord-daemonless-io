@@ -1,17 +1,17 @@
 ---
 title: "fjord Roadmap"
-description: "What comes after fjord 0.4.3: a ZFS dataset per app, then a fjord that is safe to leave alone and keeps itself up to date (jobs, history, notifications, auto-update with snapshots), then scheduled snapshots, compose history and 1.0."
+description: "What comes after fjord 0.4.3: a ZFS dataset per app in 0.4.4, then jobs, history, notifications, and auto-update with snapshots in 0.5.0, then scheduled snapshots, compose history, and 1.0."
 ---
 
 # Roadmap
 
-What is planned, in the order it is likely to land. Nothing here is a promise. Issues and pull requests on [daemonless/fjord](https://github.com/daemonless/fjord) move things up. What already shipped is in the [changelog](https://github.com/daemonless/fjord/blob/main/CHANGELOG.md).
+What is planned after **fjord 0.4.3** (shipped 2026-11-13), in the order it is likely to land. Nothing here is a promise. Issues and pull requests on [daemonless/fjord](https://github.com/daemonless/fjord) move things up. Everything already shipped (Linux support, built-in sign-in, names and local HTTPS, the `fjord` CLI, **Update all** with SBOM diffs, and per-stack health recovery) is in the [changelog](https://github.com/daemonless/fjord/blob/main/CHANGELOG.md).
 
 ---
 
-## 0.4.3: in release candidates now
+## Recently shipped in 0.4.3
 
-Update all with a diff of what changes, a `fjord` command for the shell, typed settings in the install wizard, a stack's parts in the App Store, health checks with a recovery policy per stack, a banner for host and engine problems, and a round of hardening. Try it from the [v0.4.3 pre-releases](https://github.com/daemonless/fjord/releases).
+**Update all** with a pre-flight SBOM package diff, the [`fjord` CLI](cli.md), typed settings and capability prompts in the install wizard, stack parts in the App Store, background health checks with per-stack recovery policies, a persistent Conditions banner for host and engine issues, and `cni-epair` v1.2.1. Grab it from the [v0.4.3 release](https://github.com/daemonless/fjord/releases/tag/v0.4.3).
 
 ## 0.4.4: a dataset per app
 

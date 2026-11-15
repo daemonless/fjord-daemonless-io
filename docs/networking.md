@@ -1,154 +1,82 @@
 ---
-title: "Networking"
-description: "How fjord connects containers: published ports on the bridge, the host's own stack, an address of their own on your LAN by DHCP or from a pool, private networks between a stack's services, and addresses that stay put across updates and reboots."
+title: "Networking & Local HTTPS"
+description: "How fjord connects containers and jails on FreeBSD and Linux: bridge, host, dedicated LAN/VLAN addresses (cni-epair and macvlan), private stack networks, and local HTTPS names via daemonless/reverse-proxy."
 ---
 
-# Networking
+# Networking &amp; Local HTTPS
 
-Every service in a stack is somewhere on a network. fjord offers four places,
-and the **Services** tab of each stack shows and changes where each service is.
+Every service in a stack connects to one or more networks, viewable and editable at install time or on the stack's **Services** tab.
 
 ---
 
-## 1. Where a service can live
+## 1. Where a Service Can Live
 
-| Network | Reached at | Good for |
+| Network | Reached At | Best For |
 | :--- | :--- | :--- |
-| **bridge** (default) | this host's address, on the ports the service publishes (`http://host:8181`) | most apps; nothing to set up |
-| **host** | this host's address, on the ports the app binds itself | apps that need the host's network directly (DHCP servers, discovery) |
-| **LAN** | an address of its own on your network (`http://192.168.5.25`) | apps you want reachable like another machine: own DNS name, own DHCP reservation, no port clashes |
-| **private** | only by the other services of the same stack | a database or cache that nothing outside the app should reach |
+| **bridge** (default) | Host IP on published ports (`http://host:8181`) | Most single-service apps; zero switch/router setup |
+| **host** | Host IP on the ports the process binds directly | mDNS, DHCP, or network discovery services |
+| **LAN / VLAN** | Dedicated IP on your switch or VLAN (`http://192.168.5.25`) | Giving an app its own LAN IP, DHCP reservation, firewall rules, and zero port conflicts |
+| **private** | Only by sibling services inside the same stack | Databases, caches, and workers (`postgres`, `redis`, `immich-ml`) |
 
-A service can be on more than one: a typical multi-service app puts its web
-front end on the LAN and its database on the stack's private network, so the
-database is reachable by the app and by nothing else. A one-service app gets
-no private network.
-
-Each service has a **Type** on the Services tab: **networks** (one or more
-interfaces, each on a network), **host** (this host's own network stack), or
-**none** (no network at all). Switching to host and back keeps the
-interfaces. The built-in bridge can sit next to a LAN network on one
-service, and a service on the bridge keeps its published ports.
+Multi-service stacks attach the web frontend to your default or LAN network and isolate databases and workers on the stack's own private network (`<stack>_default`), never sharing private networks or `epair` interfaces between similarly named stacks.
 
 ```mermaid
 flowchart TD
-    subgraph LAN["LAN Network (cni-epair)"]
+    subgraph LAN["LAN / VLAN Network (cni-epair or macvlan)"]
         Frontend["Web Frontend: 192.168.5.25"]
+        Proxy["daemonless/reverse-proxy: https://app.apps.lan"]
     end
-    subgraph Bridge["Host Bridge (cni-rdr / PF)"]
+    subgraph Bridge["Host Bridge (PF cni-rdr / netavark)"]
         PubService["Service on Bridge: host:8181"]
     end
-    subgraph Private["Private Stack Network (cni-dnsname)"]
+    subgraph Private["Private Stack Network (cni-dnsname / dnsmasq)"]
         DB["Database / Redis Sidecar"]
     end
-    Frontend -->|Internal DNS| DB
-    PubService -->|Internal DNS| DB
+    Proxy -->|HTTPS -> Backend| Frontend
+    Proxy -->|HTTPS -> Backend| PubService
+    Frontend -->|Service DNS| DB
+    PubService -->|Service DNS| DB
 ```
 
-!!! note "Private is not isolated yet"
-    In 0.3 "private" means not reachable from your LAN. Stacks on the same
-    host can still reach each other's private networks; isolation is 0.3.6.
+---
 
-!!! note "Bridge needs pf"
-    Ports published on the bridge network go through pf's rdr anchors. The
-    **System** page checks for them; see
-    [Troubleshooting](troubleshooting.md#packet-filter-pf-anchors-for-podman).
+## 2. Names &amp; Local HTTPS (`reverse-proxy`) { #names-and-local-https }
+
+When you install the **Daemonless Reverse Proxy** (`daemonless/reverse-proxy`) from the App Store (or link an existing instance under **Settings → Names**), `fjord` pairs with it automatically over its `/api/v1` names-provider API:
+
+- **One-click HTTPS names**: Give any web stack a clean name such as `https://radarr.apps.lan` in the install wizard (`--given-name radarr` in the [CLI](cli.md)) or later from the **`Open ▾`** menu (**By name**, **Direct**, **Change name**, **Remove name**, or **Never name this**).
+- **Daemon-owned registration**: `fjordd` registers the name after the stack passes its stay-up check, syncs the application's icon to the proxy dashboard, and records the assigned URL in **Output**.
+- **Automatic target tracking**: If a stack's port or LAN IP changes later, `fjordd` updates its upstream target on `reverse-proxy` automatically, and removes the host entry on stack teardown.
+- **Trust &amp; multi-host linking**: A shield chip beside **Open** tells you whether your browser trusts the proxy's local CA (with a direct link to install the root certificate) and whether DNS resolves. Multiple `fjord` hosts on your network (FreeBSD and Linux) can share one `reverse-proxy` appliance by pasting a single pairing link in **Settings → Names**.
 
 ---
 
-## 2. LAN networks
+## 3. Dedicated LAN &amp; VLAN Networks
 
-![The Networks page: the built-ins, two LAN networks on their bridges, the private ones folded away](img/networks-dark.png#only-dark){ .glightbox }
-![The Networks page: the built-ins, two LAN networks on their bridges, the private ones folded away](img/networks-light.png#only-light){ .glightbox }
+![The Networks page: built-in networks, LAN networks on host bridges, and private stack networks](img/networks-dark.png#only-dark){ .glightbox }
+![The Networks page: built-in networks, LAN networks on host bridges, and private networks](img/networks-light.png#only-light){ .glightbox }
 
-A LAN network gives a container its own address on one of the host's
-bridges, as if it were another machine plugged into the same switch.
+A LAN network attaches containers or jails directly to a physical interface or VLAN so each workload gets its own L2 address on your network.
 
-**What it needs on the host**
+=== "FreeBSD (`cni-epair` &amp; VNET)"
 
-- The [cni-epair](https://github.com/daemonless/cni-epair) plugin:
-  `pkg install cni-epair` (the fjord package already has it). Without the
-  package, fjord offers an **Install** button in the setup wizard and on the
-  **System** page (see [Installation](install.md)).
-- A bridge with the host's network card (or a VLAN on it) as a member. If the
-  host has none, **Networks → New network** shows the exact commands to create
-  one, both for now and in `rc.conf` for every boot.
+    - **Plugin**: Uses [`cni-epair`](https://github.com/daemonless/cni-epair) (**v1.2.1+**, installed automatically by `sysutils/fjord` or **Setup → Set up**). Version `1.2.1+` isolates container DHCP client identifiers so containers never overwrite the host's own DHCP hostname on your router.
+    - **Host Bridge**: Attaches to a FreeBSD `bridge(4)` containing your physical NIC or `vlan(4)` sub-interface. If none exists yet, **Networks → New network** displays the exact `ifconfig` and `rc.conf` commands.
+    - **Wire Probe**: When creating a LAN network on an unnumbered VLAN bridge, `fjordd` runs a caged DHCP probe to auto-fill and validate the subnet and gateway.
 
-**Creating one:** **Networks → New network**, pick the bridge, give it a name,
-and choose where its addresses come from (next section). Stacks can then be
-put on it from the install wizard or the **Services** tab.
+=== "Linux (`macvlan` &amp; `netavark`)"
 
-**The wire check.** When you pick a bridge the host has no address on, fjord
-asks its DHCP server what the network is (a caged probe through a throwaway
-interface) and fills in the subnet and gateway. A subnet that is not on that
-wire is refused, with the reason next to Create. The answer is kept across
-restarts and asked again daily; a network that disagrees with its wire is
-flagged on the Networks page and in the install wizard. Where nothing
-answers, fjord says so and lets you type the subnet.
+    - **Driver**: Creates a Podman `macvlan` network bound to your host NIC or VLAN interface (`eth0`, `eno1.20`).
+    - **DHCP or Pool**: For DHCP leases on Linux, enable Netavark's DHCP proxy (`systemctl enable --now netavark-dhcp-proxy.socket`); `fjord` pins the container MAC so router reservations stay permanent. Alternatively, use a **Pool** range where `fjord` pins static IPs directly.
 
-### Where addresses come from
-
-- **DHCP** (the default where the plugin supports it): your router hands out
-  the address, the same way it does for any other device. fjord records the
-  service's MAC address, so the router keeps giving it the same lease; add a
-  reservation for that MAC on the router to make it permanent.
-- **Pool**: fjord hands out addresses from a range you choose. Pick a range
-  your router's DHCP server does not use, and keep your fixed addresses
-  outside it (for example, fixed addresses in `.10–.99`, the pool
-  `.100–.199`).
-- **Static**: nothing is handed out; every service on the network needs an
-  address you type in.
+### Address Allocation Modes
+- **DHCP**: Your router assigns the lease; `fjord` pins and saves the container's MAC address in `compose.yaml` so leases and router reservations persist across updates and reboots.
+- **Pool**: `fjord` allocates an unused IP from a range you define, probing the wire via ARP/ICMP first so an address already held by another machine on your LAN is skipped automatically.
+- **Static**: You assign each service's IPv4 (and optional IPv6) address explicitly.
 
 ---
 
-## 3. Addresses that stay put
+## 4. Service Discovery &amp; AppJail Networking
 
-A service keeps its address through updates, restarts and reboots:
-
-- The first time a service starts on a LAN network, fjord writes its address
-  (on a pool network) or its MAC (on a DHCP network) into the stack's
-  `compose.yaml`. From then on it gets the same one every time.
-- An address or MAC you set yourself in the **Services** tab is never changed.
-- An address another stack already has is refused: **Save** and **Start** say
-  which stack holds it (`192.168.5.19 on vlan5 is smokeping's address — give
-  seerr another address in the Services tab`).
-- Reservations left behind by containers that no longer exist are released
-  the next time a stack starts on that network.
-- **Open** on a stack page goes to the service's address on your LAN, never
-  to a private 10.x one.
-- A stack's private network is removed with the stack. One left over from
-  an earlier version reads as "left over from a deleted stack" on the
-  Networks page and can be deleted there.
-
----
-
-## 4. Finding each other by name
-
-Services of the same stack reach each other by service name
-(`postgres://database:5432`) on any network they share. On the podman engine
-that takes the **cni-dnsname** plugin (`pkg install cni-dnsname`); without it
-a multi-service app starts, fails to find its database, and restarts over and
-over. The **System** page checks for it.
-
----
-
-## 5. IPv6
-
-A pool or static network can carry an IPv6 segment next to its IPv4 one;
-services on it then get an address of each. DHCP networks are IPv4 only.
-
----
-
-## 6. AppJail
-
-AppJail stacks use AppJail's own virtual networks: each jail gets an address
-behind NAT, and ports are published with `expose`. The **Networks** page lists
-which networks each engine can use. A jail can also be put on a LAN network,
-with one interface per bridge; on a DHCP network fjord takes the lease on the
-host at install and gives the jail a fixed address.
-
-In 0.3 a jail cannot have the built-in bridge next to a LAN network, and a
-network added on the Services tab after install does not get the jail a
-second address (add both in the wizard). Jails find each other by name only
-when dnsmasq answers with appjail's config; the **Setup** page shows the
-commands. All of this is 0.3.5, AppJail parity.
+- **Podman service DNS**: Services sharing a stack network resolve each other by service name (`postgres://database:5432`) via `cni-dnsname` on FreeBSD (`aardvark-dns` on Linux), checked automatically on **System**.
+- **AppJail virtual &amp; LAN networks**: AppJail stacks run on virtual NAT bridges (`appjail-nat` PF anchors) with automatic `dnsmasq` service discovery across dynamic bridges from first boot, or directly on LAN bridges with fixed or DHCP-acquired addresses.

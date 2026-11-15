@@ -1,158 +1,110 @@
 ---
 title: "Troubleshooting & Host Diagnostics"
-description: "Comprehensive diagnostics reference for fjord on FreeBSD: readiness audits, Libpod socket failures, PF firewall redirection, ocijail runtime bugs, and storage lock remediation."
+description: "Diagnostics reference for fjord on FreeBSD and Linux: engine sockets, PF anchors, cni-epair DHCP hostnames, AppJail DNS, SELinux/firewalls, password resets, and storage locks."
 ---
 
 # Troubleshooting &amp; Host Diagnostics
 
-This reference provides root-cause diagnosis and remediation procedures for host readiness audits, engine communication failures, and runtime jail misconfigurations.
+The **System** page and top **Conditions** banner continuously audit host readiness across FreeBSD and Linux. Below are root causes and copy-paste fixes for common host and runtime issues.
 
 ---
 
-## 1. Host Readiness Diagnostics
-
-The **System** dashboard runs automated audits against your FreeBSD host environment. The table below details the technical significance of each audit, typical failure symptoms, and remediation commands.
+## 1. Host Readiness Checks
 
 ### Libpod API Socket (`podman.sock`)
 
-- **Technical Role**: fjord communicates with Podman over a local Unix domain socket (`/var/run/podman/podman.sock`) to query container status, stream stdout/stderr logs, and spawn interactive exec sessions.
-- **Failure Symptom**: fjord reports the Podman engine is unavailable; stack status indicators show disconnected sockets.
+- **Technical Role**: `fjordd` talks to Podman over `/var/run/podman/podman.sock` on FreeBSD (`/run/podman/podman.sock` on Linux) to inspect containers, stream logs, and open shells.
+- **Symptom**: `fjord` reports the Podman engine is unavailable.
 - **Remediation**:
-  Ensure the `podman_service` rc daemon is enabled and running:
-  ```sh
-  sysrc podman_service_enable=YES
-  service podman_service restart
-  ```
-  !!! note "Restarting `podman_service` stops your containers"
-      On FreeBSD, containers launched via the Libpod API socket die with the service. Restart your stacks from fjord after cycling it.
+    - **FreeBSD**:
+      ```sh
+      sysrc podman_service_enable=YES
+      service podman_service restart
+      ```
+    - **Linux**:
+      ```sh
+      sudo systemctl enable --now podman.socket
+      ```
+
+    !!! note "Restarting `podman_service` on FreeBSD stops running Podman containers"
+        On FreeBSD, containers started through the Libpod API socket stop when `podman_service` restarts. Bring your stacks back up with `fjord up <stack>` or from the **Stacks** page afterwards.
 
 ---
 
-### Container Monitor (`conmon`)
+### `cni-epair` Version (`< 1.2.1`) &amp; Router Hostname Collisions (FreeBSD)
 
-- **Technical Role**: `conmon` monitors container lifecycle, preserving exit codes and I/O streams while the engine daemon is idle.
-- **Failure Symptom**: Containers fail to start with an unhelpful error from the OCI runtime.
-- **Remediation**:
-  ```sh
-  pkg install -y conmon
-  ```
+- **Symptom**: Every LAN container receives the FreeBSD host's own hostname in your router's DHCP table, or the host loses its DNS name.
+- **Cause**: Versions of `cni-epair` prior to `v1.2.1` forwarded the host's hostname on container DHCP requests.
+- **Remediation**: Click **Set up** on the **Setup** / **System** page (which installs `cni-epair v1.2.1+`), or upgrade via `pkg upgrade -y cni-epair`.
 
 ---
 
-### OCI Jail Runtime (`ocijail`)
+### OCI Jail Runtime (`ocijail` 0.6.0+) &amp; `conmon` (FreeBSD)
 
-- **Technical Role**: `ocijail` is the low-level OCI runtime that translates container manifests into FreeBSD `jail(8)` instances.
-- **Failure Symptom**: Containers fail to drop privileges or report permission errors when accessing application configuration files. Older versions (< 0.6.0) leak host `umask` settings into container root filesystems, resulting in world-inaccessible image assets.
+- **Symptom**: Unprivileged containers fail with permission errors on image files (`ocijail < 0.6.0` leaked host `umask`), or fail to start with a missing monitor error.
 - **Remediation**:
-  Verify and upgrade `ocijail` to 0.6.0 or newer:
   ```sh
-  pkg install -y ocijail
+  pkg install -y conmon ocijail
   pkg upgrade -y ocijail
   ```
 
 ---
 
-### Packet Filter (PF) Anchors for Podman
+### Packet Filter (PF) Anchors for Podman &amp; AppJail (FreeBSD)
 
-- **Technical Role**: Podman's bridge networking (`cni-rdr`) requires PF redirection and NAT anchors to publish container ports to external network interfaces.
-- **Failure Symptom**: Containers start successfully and bind internal ports, but inbound traffic to host ports hangs or drops with no connection established.
-- **Remediation**:
-  Add the following anchor declarations to `/etc/pf.conf` above any blocking filter rules, replacing `$ext_if` with your physical network interface:
+- **Symptom**: Bridge-networked containers start cleanly, but inbound connections to published ports time out; or AppJail fails with `The nat command requires appjail-nat/jail/*` (exit code 78).
+- **Remediation**: Click **Set up** on **Setup** / **System** to add the anchors automatically, or place them in `/etc/pf.conf` above filter rules (replacing `$ext_if` with your uplink interface) and reload with `pfctl -f /etc/pf.conf`:
   ```pf
   rdr-anchor "cni-rdr/*"
   nat-anchor "cni-rdr/*"
+  nat-anchor "appjail-nat/jail/*"
+  nat-anchor "appjail-nat/network/*"
+  rdr-anchor "appjail-rdr/*"
   table <cni-nat>
   nat on $ext_if inet from <cni-nat> to any -> ($ext_if)
-  ```
-  Reload the Packet Filter configuration:
-  ```sh
-  pfctl -f /etc/pf.conf
   ```
 
 ---
 
-### AppJail Engine &amp; Director
+### AppJail Engine, Director &amp; Jail DNS (`dnsmasq`)
 
-- **Technical Role**: Enables native FreeBSD jail management via `appjail` and `appjail-director`.
-- **Failure Symptom**: The AppJail backend is grayed out, or deployment fails with `"the appjail engine is not available on this host"`.
-- **Remediation**:
-  Install `appjail` (5.5.0+) and the director package:
+- **Symptom**: AppJail is unavailable, or multi-jail stacks cannot resolve sibling jail names on first boot.
+- **Remediation**: Install `appjail` (5.5.0+), `sysutils/py-director`, and let **Setup → Set up** configure `dnsmasq` so bridge interfaces are answered dynamically as AppJail creates them:
   ```sh
-  pkg install -y appjail sysutils/py-director
+  pkg install -y appjail sysutils/py-director dnsmasq
   service fjordd restart
   ```
 
 ---
 
-### Packet Filter Anchors for AppJail
+### Linux Firewall (`firewalld` / `ufw`) &amp; SELinux Mount Labels
 
-- **Technical Role**: AppJail assigns virtual network addresses to jails and routes external traffic via NAT anchors.
-- **Failure Symptom**: Virtual network jails fail to launch; stack output reports `The nat command requires appjail-nat/jail/*` and `appjail-director up` exits with code 78.
-- **Remediation**:
-  Add AppJail anchors to `/etc/pf.conf` and reload:
-  ```pf
-  nat-anchor "appjail-nat/jail/*"
-  nat-anchor "appjail-nat/network/*"
-  rdr-anchor "appjail-rdr/*"
-  ```
-  ```sh
-  pfctl -f /etc/pf.conf
-  ```
+- **Symptom (Firewall)**: `fjordd` is running on Linux, but `http://<host>:3567` times out from another machine on your LAN.
+- **Remediation (Firewall)**: Open port `3567/tcp` on your management LAN (`sudo firewall-cmd --add-port=3567/tcp --permanent && sudo firewall-cmd --reload` on Fedora, or `sudo ufw allow 3567/tcp` on Ubuntu). Published container ports are opened automatically by Podman.
+- **Symptom (SELinux)**: Container logs report `Permission denied` on a custom host bind mount (such as `/srv/media`).
+- **Remediation (SELinux)**: `fjord` labels App Data directories automatically; for custom host paths on enforcing SELinux systems, enable the `:z` mount option on the stack's **Resources** tab (or run `chcon -R -t container_file_t <dir>`).
 
 ---
 
-## 2. Common Runtime Issues
+## 2. Account &amp; Runtime Issues
 
-### Port Conflict: `pre-flight failed: port X/tcp is already in use`
-- **Cause**: fjord's pre-flight detected that a host port the stack needs is already held — by a local daemon (BIND, Unbound, Nginx), by another container (named in the message), or by another stack's host-network sidecar (two stacks each shipping a postgres on 5432 or a redis on 6379 collide this way).
-- **Remediation**: Inspect the holding process using `sockstat`:
-  ```sh
-  sockstat -4 -l -p <port>
-  ```
-  Either stop the conflicting service or open the stack in fjord, select a different host port under **Resources**, and launch the stack.
+### Locked Out or Forgot Web UI Password
+Reset the administrator password as root on the host (this also signs out all active browser sessions):
 
----
+```sh
+fjordd passwd
+```
 
-### Director Failure: `ProjectLocked`
-- **Cause**: Two `appjail-director` invocations collided on the same stack workspace (for instance, clicking **Apply** while a background container restart was still active).
-- **Remediation**: Allow running operations to complete, or inspect active processes:
-  ```sh
-  ps aux | grep director
-  ```
-  Once the active process completes, retry the operation from fjord.
+### Port Conflict (`port X/tcp is already in use`)
+`fjord`'s pre-flight detected a port collision and named the holding container (or reported a host process). Inspect host listeners with `sockstat -4 -l -p <port>` on FreeBSD (`ss -tlnp 'sport = :<port>'` on Linux), or pick another port on the stack's **Resources** tab.
 
----
+### Storage Layer Busy (`Found incomplete layer ... pool or dataset is busy`)
+A `containers-storage` layer is marked incomplete while an AppJail jail still has that layer nullfs-mounted:
+1. Run `mount | grep <layer-id>` to see which jail holds the mount.
+2. Stop that stack (`fjord down <stack>` or **Stop** in the UI) so `buildah` can release and clean the layer, then start it again (`fjord up <stack>`).
 
-### Storage Corruption: Incomplete Layer Locks
-- **Symptom**: every `podman`/`buildah` command warns `Found incomplete layer "<id>", deleting it` and then fails with `cannot unmount ... pool or dataset is busy`; image pulls, updates and AppJail rebuilds all fail after that.
-- **Cause**: a container-storage layer record is flagged incomplete while a jail still has that layer mounted as its root (AppJail jails are built from buildah containers, so this is usually one of them). Every storage operation first tries to delete the layer and can't.
-- **Remediation**:
-  1. Find who holds it: `mount | grep <layer id>` shows the jail root the layer is nullfs-mounted into.
-  2. Stop that stack from fjord (**Stop** runs `down`, which removes the jail and lets buildah release the layer).
-  3. Start it again, then retry the operation that failed.
+### Database `Access denied` After Editing `DB_PASSWORD` in `.env`
+Database images initialize user credentials only when creating an empty data directory. Changing `DB_PASSWORD` in `.env` later updates the application container, not the existing database user. Restore the original password in `.env` or run `ALTER USER` inside the database (`fjord exec <stack> database`).
 
----
-
-### Network Error on Host-Network Jail: `errno 43 (Protocol not supported)`
-- **Cause**: The jail was initialized with IPv4 disabled (`ip4=disable`) instead of inheriting host networking.
-- **Remediation**: When deploying host-network stacks on AppJail, ensure the jail template explicitly includes `ip4: inherit`. Triggering **Update** or **Apply** from the stack view recreates the jail with proper inheritance annotations.
-
----
-
-### Install failed: the stack reads "stopped" with a red banner
-An install that fails leaves the stack saved, stopped, with the reason in a
-banner on its page and a line in `/var/log/fjordd.log`. The usual causes: a
-tag that does not exist, a pull that ran out of disk (check `zfs list` on the
-pool holding `/var/db/containers`), or an image built for another
-architecture. Fix the cause, then **Start** the stack; the banner clears
-when an action succeeds.
-
-### Database "Access denied" after changing a password in `.env`
-A database image sets its user's password only when it first creates its
-data directory. Changing `DB_PASSWORD` afterwards changes what the app
-sends, not what the database holds. Either put the old value back, or change
-it inside the database (`ALTER USER`) to match.
-
-### Remote SMB Volume Mount Refusal
-- **Cause**: FreeBSD's kernel SMB client (`mount_smbfs`) supports only SMB1 dialect. Modern NAS devices and file servers reject SMB1 negotiations by default for security.
-- **Remediation**: For FreeBSD hosts, connect persistent network storage using NFS (`nfs://server/export`).
+### Remote SMB Volume Refused on FreeBSD
+FreeBSD's kernel `mount_smbfs` speaks SMB1 only, which modern NAS servers reject. Use NFS (`nfs://server/export`) on FreeBSD hosts; `smb://` named volumes are supported on Linux hosts.
