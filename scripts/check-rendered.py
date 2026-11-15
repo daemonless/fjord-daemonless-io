@@ -6,7 +6,6 @@ Checks across all generated HTML pages:
 2. Annotated code blocks (# (1)) missing their <ol> note list immediately after.
 3. Unrendered admonitions / details fences (!!! note, ??? ") left as body text.
 4. Broken YAML frontmatter rendered into visible <p>title: ... body text.
-5. Instant-preview attributes (data-preview) emitted on internal doc links.
 """
 import pathlib
 import re
@@ -19,11 +18,9 @@ raw_admonition = re.compile(r"(?:<p>|<li>|\n)\s*(?:!!!|\?\?\?\+?)\s+(?:[a-z]+|\"
 raw_frontmatter = re.compile(r"<p>\s*title:\s*(?:\"|&quot;|')")
 
 problems = []
-preview_links = 0
 
 for page in sorted(site.rglob("*.html")):
     html = page.read_text(errors="replace")
-    preview_links += html.count("data-preview")
     # Strip <pre>...</pre> and <code>...</code> before prose-only checks.
     prose = re.sub(r"<pre[^>]*>.*?</pre>", "", html, flags=re.S)
     prose = re.sub(r"<code[^>]*>.*?</code>", "", prose, flags=re.S)
@@ -47,11 +44,8 @@ for page in sorted(site.rglob("*.html")):
                 "(Markdown inside HTML without the markdown attribute?)"
             )
 
-if preview_links == 0:
-    problems.append(f"{site}: zero data-preview links generated (is zensical.extensions.preview configured?)")
-
 for p in problems:
     print(p)
 if not problems:
-    print(f"Rendered: no raw icon codes, admonitions, or frontmatter leaks; {preview_links} preview links active.")
+    print("Rendered: no raw icon codes, admonitions, or frontmatter leaks.")
 sys.exit(1 if problems else 0)

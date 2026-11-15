@@ -48,7 +48,6 @@ features = [
   "navigation.indexes",
   "navigation.instant",
   "navigation.instant.progress",
-  "navigation.instant.preview",
   "navigation.instant.prefetch",
   "search.highlight",
   "search.suggest",
@@ -148,6 +147,3 @@ alternate_style = true
 [project.markdown_extensions.pymdownx.emoji]
 emoji_index = "zensical.extensions.emoji.twemoji"
 emoji_generator = "zensical.extensions.emoji.to_svg"
-
-[project.markdown_extensions.zensical.extensions.preview]
-targets = { include = ["*.md"], exclude = ["index.md"] }
