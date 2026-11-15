@@ -1,6 +1,6 @@
 ---
 title: "FreeBSD Jail Orchestration Runtime Descriptor"
-description: "FJORD is an open horizontal standard and native compose management platform for FreeBSD containers. Run OCI stacks directly as native FreeBSD jails with Podman or AppJail."
+description: "FJORD is an open horizontal Compose standard, web UI, and CLI built for FreeBSD (Podman and AppJail) and Linux (Podman)."
 hide:
   - navigation
   - toc
@@ -13,13 +13,13 @@ hide:
     </div>
     <h1><span class="fj-f">f</span>jord</h1>
     <p class="hero-subtitle">FreeBSD Jail Orchestration Runtime Descriptor</p>
-    <p class="hero-tagline">An open, vendor-neutral standard and native compose platform for FreeBSD. Deploy OCI container stacks directly as native jails with Podman or AppJail—zero VM overhead, zero proprietary appliance lock-in.</p>
+    <p class="hero-tagline">An open, vendor-neutral Compose standard, web UI, and CLI built for FreeBSD (Podman &amp; AppJail) and Linux (Podman). Deploy container stacks with zero VM overhead and zero proprietary appliance lock-in.</p>
     <div class="hero-buttons">
       <a href="install/" class="md-button md-button--primary">Get Started</a>
       <a href="#video-walkthrough" class="md-button">Watch Walkthrough</a>
+      <a href="cli/" class="md-button">CLI Reference</a>
       <a href="spec/" class="md-button">Read the Spec</a>
-      <a href="concepts/" class="md-button">Explore Architecture</a>
-      <a href="https://daemonless.io/images/" class="md-button">Browse 80+ Apps</a>
+      <a href="https://daemonless.io/images/" class="md-button">Browse 130+ FreeBSD Apps</a>
     </div>
   </div>
   <div class="window-frame">
@@ -44,54 +44,58 @@ hide:
 
 <div class="fj-section fj-head">
   <h2>Up and running in a minute</h2>
-  <p class="section-desc">Install <code>sysutils/fjord</code> from FreeBSD packages to automatically pull in <code>fjordd</code>, its rc service script, and both container engines (Podman and AppJail).</p>
+  <p class="section-desc">Install <code>sysutils/fjord</code> on FreeBSD for native Podman and AppJail orchestration, or install the <code>.rpm</code> / <code>.deb</code> package on Linux for rootful Podman.</p>
 </div>
 
 <div class="fj-install-tabs" markdown>
 
-=== "Package"
+=== "FreeBSD Package"
 
     ```sh
     pkg install -y fjord
 
-    sysrc fjordd_enable=YES
-    service fjordd start    # then open http://<host>:3567
+    sysrc podman_service_enable=YES fjordd_enable=YES
+    service podman_service start
+    service fjordd start
+    cat /var/db/fjord/setup-code    # open http://<host>:3567 to sign in
     ```
 
-=== "Release binary"
+=== "Linux (.deb / .rpm)"
 
     ```sh
-    fetch https://github.com/daemonless/fjord/releases/latest/download/fjordd-freebsd-$(uname -m)
-    fetch https://github.com/daemonless/fjord/releases/latest/download/fjordd.rc
-    install -m 755 fjordd-freebsd-* /usr/local/sbin/fjordd
-    install -m 755 fjordd.rc /usr/local/etc/rc.d/fjordd
+    V=0.4.3 A=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+    # Fedora / RHEL
+    sudo dnf install -y https://github.com/daemonless/fjord/releases/download/v$V/fjord-$V-linux-$A.rpm
+    # Debian / Ubuntu
+    curl -fsSLO https://github.com/daemonless/fjord/releases/download/v$V/fjord-$V-linux-$A.deb && sudo apt install -y ./fjord-$V-linux-$A.deb
 
-    sysrc fjordd_enable=YES
-    service fjordd start    # then open http://<host>:3567
+    sudo cat /var/db/fjord/setup-code    # open http://<host>:3567 to sign in
     ```
 
-=== "Port"
+=== "FreeBSD Binary"
 
     ```sh
-    cd /usr/ports/sysutils/fjord && make install clean
+    fetch -o /usr/local/sbin/fjordd https://github.com/daemonless/fjord/releases/latest/download/fjordd-freebsd-$(uname -m)
+    fetch -o /usr/local/etc/rc.d/fjordd https://github.com/daemonless/fjord/releases/latest/download/fjordd.rc
+    chmod 755 /usr/local/sbin/fjordd /usr/local/etc/rc.d/fjordd
+    ln -sf fjordd /usr/local/sbin/fjord
 
     sysrc fjordd_enable=YES
-    service fjordd start    # then open http://<host>:3567
+    service fjordd start    # open http://<host>:3567
     ```
 
-    `make config` picks the engines. Installing them from packages first means `make` only builds fjord.
-
-=== "git clone"
+=== "From Source"
 
     ```sh
     pkg install -y git go npm
     git clone https://github.com/daemonless/fjord && cd fjord
     (cd ui && npm ci && npm run build) && go build -o fjordd ./cmd/fjordd
     install -m 755 fjordd /usr/local/sbin/fjordd
+    ln -sf fjordd /usr/local/sbin/fjord
     install -m 755 packaging/fjordd.rc /usr/local/etc/rc.d/fjordd
 
     sysrc fjordd_enable=YES
-    service fjordd start    # then open http://<host>:3567
+    service fjordd start    # open http://<host>:3567
     ```
 
 </div>
@@ -125,8 +129,8 @@ hide:
 
 <div class="fj-section">
   <h2>A Horizontal Standard, Not a Vertical Appliance</h2>
-  <p class="section-desc">Linux homelab ecosystems achieved "one-click" app stores by building vertical silos—appliances like CasaOS and TrueNAS SCALE deliver convenience by locking the user into a proprietary operating system, a captive UI, and an opinionated orchestrator.</p>
-  <p class="section-desc">FreeBSD already possesses superior kernel primitives for container isolation and storage: <strong>Jails</strong>, <strong>ZFS datasets</strong>, <strong>VNET</strong>, and <strong>devfs rulesets</strong>. FreeBSD does not need a proprietary vertical appliance. It needs an <strong>open, horizontal standard</strong>.</p>
+  <p class="section-desc">Many container platforms achieve one-click app stores by building vertical silos: dedicated storage and appliance distributions deliver convenience only by locking operators into a captive OS, a proprietary UI, and an opinionated orchestrator.</p>
+  <p class="section-desc">FreeBSD already provides kernel primitives built for multi-tenant isolation and storage: <strong>Jails</strong>, <strong>ZFS datasets</strong>, <strong>VNET</strong>, and <strong>devfs rulesets</strong>. FreeBSD does not need a proprietary vertical appliance. It needs an <strong>open, horizontal standard</strong>.</p>
 </div>
 
 <div class="fj-section fj-install" markdown>
@@ -180,30 +184,30 @@ x-fjord:
 </div>
 
 <div class="fj-section">
-  <h2>How fjord Orchestrates Jails</h2>
-  <p class="section-desc">fjord translates standard container declarations into native FreeBSD jails without proprietary state locks or runtime virtualization.</p>
+  <h2>How fjord Orchestrates Workloads</h2>
+  <p class="section-desc">fjord translates standard Compose declarations into native FreeBSD jails and Podman containers without proprietary state locks or VM overhead.</p>
   <div class="fj-steps">
     <div class="fj-step">
       <div class="fj-step-index">01 / Catalog Discovery</div>
-      <h3>Curated OCI Images</h3>
-      <p>Browse FreeBSD-native container images from the <a href="https://daemonless.io/images/">daemonless image fleet</a> or private catalogs. Apps not built for your CPU architecture are filtered out; each manifest carries the app's ports, volumes and permissions.</p>
+      <h3>Verified OCI Catalogs</h3>
+      <p>Browse 130+ FreeBSD-native apps from the <a href="https://daemonless.io/images/">Daemonless fleet</a> (plus 180+ tested Linux apps on Linux hosts) or attach private catalogs. Incompatible CPU architectures are filtered automatically.</p>
     </div>
     <div class="fj-step">
       <div class="fj-step-index">02 / Specification</div>
       <h3>Filesystem Ground Truth</h3>
-      <p>Every stack generates standard <code>compose.yaml</code> and <code>.env</code> files on disk in <code>/var/db/fjord/stacks/</code>. Edit specs directly in the built-in CodeMirror editor or via your shell with <code>vi</code>—the CLI and UI always remain synchronized.</p>
+      <p>Every stack writes plain <code>compose.yaml</code> and <code>.env</code> files in <code>/var/db/fjord/stacks/</code>. Operate stacks from the web UI, the built-in <code>fjord</code> CLI, or standard shell tools with zero drift.</p>
     </div>
     <div class="fj-step">
       <div class="fj-step-index">03 / Orchestration</div>
-      <h3>Native Jail Execution</h3>
-      <p>Deploy workloads through <code>podman-compose</code> (with <code>ocijail</code>) or <code>appjail-director</code>. Pre-flight checks verify port availability and create missing data folders before launch; the System page audits sockets, tools and pf anchors.</p>
+      <h3>Checked Lifecycle &amp; Health</h3>
+      <p>Deploy through <code>podman-compose</code> (with <code>ocijail</code> on FreeBSD) or <code>appjail-director</code>. Pre-flight checks ports and permissions, background health watches verify every update, and automatic recovery keeps stacks up.</p>
     </div>
   </div>
 </div>
 
 <div class="fj-section">
   <h2>Key Capabilities</h2>
-  <p class="section-desc">Engineered specifically for FreeBSD systems administrators and homelab infrastructure.</p>
+  <p class="section-desc">Engineered for FreeBSD systems administrators, appliances, and production self-hosted infrastructure, with first-class Linux Podman support.</p>
 </div>
 
 <div class="grid cards fj-cards" markdown>
@@ -212,43 +216,55 @@ x-fjord:
 
     ---
 
-    Zero Linux VM overhead. Workloads execute directly on the FreeBSD kernel with native ZFS dataset performance, resource isolation, and standard FreeBSD networking.
+    Zero Linux VM overhead on FreeBSD. Workloads execute directly on the FreeBSD kernel with native ZFS performance, resource isolation, and VNET or bridge networking.
 
--   :material-source-branch: **Engine-Agnostic Architecture**
+-   :material-source-branch: **Dual-Engine &amp; Cross-OS**
 
     ---
 
-    Platform and engine agnostic by design. fjord currently supports Podman (with `ocijail`) and native FreeBSD jails managed by `appjail-director`—both coexisting smoothly on the same host, selectable per stack.
+    Run Podman (with `ocijail`) and native FreeBSD jails via `appjail-director` side by side on FreeBSD, selectable per stack, or run the same UI and CLI on Linux with rootful Podman.
+
+-   :material-console: **Web UI + `fjord` CLI**
+
+    ---
+
+    One static Go binary (`fjordd`) serves both the browser interface and the `fjord` command (`fjord ls`, `fjord install`, `fjord update --all`, `fjord logs -f`, `fjord rollback`, `fjord exec`).
+
+-   :material-shield-lock-outline: **Names &amp; Local HTTPS**
+
+    ---
+
+    Pair with the Daemonless Reverse Proxy to give any stack a clean HTTPS name like `https://radarr.apps.lan` at install time, tracking port and LAN address changes automatically.
+
+-   :material-update: **SBOM Diffs, Rollback &amp; Health Watch**
+
+    ---
+
+    Review exact application and OS package changes from image SBOMs before running **Update all**, watch updated services stay healthy, and roll back any service in one click.
 
 -   :material-file-document-edit: **Filesystem-First Source of Truth**
 
     ---
 
-    No hidden databases or opaque state files. Every stack is a plain directory containing `compose.yaml` and `.env`. Run `podman-compose` or `appjail-director` from the command line with identical behavior.
-
--   :material-stethoscope: **Automated Host Diagnostics**
-
-    ---
-
-    Readiness checks cover the libpod socket, pf anchors (`cni-rdr` / `appjail-nat`), container init tools and the data root, each with a copy-paste fix; pre-flight catches port conflicts before deployment.
+    No hidden databases or opaque lock files. Every stack is a plain directory containing `compose.yaml` and `.env` (or an AppJail director bundle) editable in CodeMirror or `vi`.
 
 -   :material-folder-network: **Structured Storage &amp; Folder Sets**
 
     ---
 
-    Enforce clean separation between persistent application configuration and shared media pools. Define local paths, NFS exports, or SMB shares once as Folder Sets and attach them across any stack.
+    Separate internal application state from shared data pools. Declare local ZFS paths, NFS exports, or SMB shares once as Folder Sets and attach them across stacks.
 
 -   :material-import: **Adopt What's Already Running**
 
     ---
 
-    Containers and jails started by hand or by a playbook become stacks with one click. fjord reads a podman container's original run command into `compose.yaml`, or an appjail jail back into a director bundle; the same image, mounts, network address and name come back under management. No data moves.
+    Containers and jails started by hand or by Ansible become managed stacks in one click, keeping their image, mounts, network address, MAC, and name in place without moving data.
 
--   :material-package-variant-closed: **Single Self-Contained Binary**
+-   :material-stethoscope: **Continuous Host &amp; Stack Checks**
 
     ---
 
-    `fjordd` is a lightweight Go binary embedding its Svelte SPA frontend. Zero background Python runtimes, Node daemons, or heavy dependencies required.
+    Background checks monitor engine sockets, PF anchors, `cni-epair`, SELinux/firewalls, and per-stack restart loops, surfacing actionable fixes in a persistent banner.
 
 </div>
 
@@ -474,15 +490,15 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     </div>
     <div class="fj-advisory-content">
-      <h4>Access Control &amp; Network Security Notice</h4>
-      <p>fjord manages host container runtimes as root and currently operates in local trusted mode without an integrated authentication barrier. Restrict port <code>3567</code> to a secure local network, or bind to loopback (<code>FJORD_LISTEN=127.0.0.1:3567</code>) and access the interface via an SSH tunnel, WireGuard, or Tailscale mesh.</p>
+      <h4>Sign-In &amp; Network Security</h4>
+      <p>fjord requires an administrator sign-in claimed on first boot via a root-only setup code (<code>/var/db/fjord/setup-code</code>), and <code>fjordd</code> manages container runtimes as root. Because <code>fjordd</code> listens over plain HTTP on port <code>3567</code> by default, keep port <code>3567</code> on a trusted LAN/VPN or place an HTTPS reverse proxy in front (<code>FJORD_TRUSTED_PROXY</code>); never expose port <code>3567</code> directly to the internet.</p>
     </div>
   </div>
 </div>
 
 <div class="fj-section">
   <h2>Friends in the FreeBSD Ecosystem</h2>
-  <p class="section-desc">fjord focuses purely on container and jail stack orchestration. If you want a full-featured hypervisor or a dedicated ZFS storage appliance, check out these projects in the FreeBSD ecosystem—both support <a href="https://daemonless.io">Daemonless</a> OCI images natively:</p>
+  <p class="section-desc">fjord focuses purely on container and jail stack orchestration. If you want a full-featured hypervisor or a dedicated ZFS storage appliance, explore these FreeBSD ecosystem platforms that support <a href="https://daemonless.io">Daemonless</a> OCI images natively:</p>
 </div>
 
 <div class="grid cards fj-cards" markdown>
@@ -491,7 +507,7 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
 
     ---
 
-    **Want a full-featured VM, Jail, and ZFS management platform?** Sylve brings Bhyve virtual machines, FreeBSD Jails, ZFS pools, networking, and clustering together in a single modern web UI—with native support for Daemonless OCI containers.
+    **Want a full-featured VM, Jail, and ZFS management platform?** Sylve brings Bhyve virtual machines, FreeBSD Jails, ZFS pools, networking, and clustering together in a single modern web UI with native support for Daemonless OCI containers.
 
     [:octicons-arrow-right-24: sylve.io](https://sylve.io)
 
@@ -499,7 +515,7 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
 
     ---
 
-    **Looking for a FreeBSD successor to TrueNAS CORE / alternative to TrueNAS SCALE?** FreeCORE carries the TrueNAS CORE legacy forward on FreeBSD 15 and OpenZFS, giving you a full storage appliance with native Daemonless container support.
+    **Want a dedicated FreeBSD 15 and OpenZFS storage appliance?** FreeCORE delivers turnkey NAS and ZFS pool management on FreeBSD 15 with native Daemonless container support.
 
     [:octicons-arrow-right-24: freecore.org](https://freecore.org)
 

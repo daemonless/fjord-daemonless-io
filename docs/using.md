@@ -1,11 +1,11 @@
 ---
 title: "Operating Guide"
-description: "Administrator guide for operating fjord: deploying applications, managing stack lifecycles, editing compose specifications, attaching storage pools, and host diagnostics."
+description: "Administrator guide for operating fjord: deploying applications, typed wizard settings, stack lifecycles, names and HTTPS, health recovery policies, storage pools, and host checks."
 ---
 
 # Operating Guide
 
-fjord organizes container infrastructure operations into five primary functional areas: **App Store**, **Stacks**, **Volumes**, **System**, and **Settings**.
+`fjord` organizes container infrastructure operations across **App Store**, **Stacks**, **Networks**, **Volumes**, **System**, and **Settings**, alongside the built-in [`fjord` CLI](cli.md).
 
 ---
 
@@ -14,35 +14,31 @@ fjord organizes container infrastructure operations into five primary functional
 ![The fjord App Store](img/store-dark.png#only-dark){ .glightbox }
 ![The fjord App Store](img/store-light.png#only-light){ .glightbox }
 
-The **App Store** catalogs all container applications available across your configured repositories.
+The **App Store** catalogs all container applications and multi-service stacks available across your configured catalogs, with **Cards** and **List** views and component-aware search (searching for a stack part surfaces its parent stack).
 
-### Architecture Filtering
-Applications incompatible with your host CPU architecture (`amd64` or `arm64`) are automatically hidden from the primary catalog view. A counter indicates how many applications are hidden, with a toggle to inspect them for reference.
+### OS &amp; Architecture Filtering
+Applications incompatible with your host OS (FreeBSD vs. Linux) or CPU architecture (`amd64` vs. `arm64`) are automatically filtered from the primary view. A counter shows how many entries are hidden for your architecture, with a toggle to inspect them.
 
 ### The Deployment Wizard
-Selecting an application opens the deployment wizard, which prompts only for required host bindings:
+Selecting an application opens a three-level install wizard (**Required**, **Options**, and **Advanced**):
 
-- **Storage Mounts**: Application data paths and persistent data folders. If you have defined Folder Sets (e.g. `Media` or `Downloads`), use the **Add folder set…** dropdown to auto-fill host paths with a single selection.
-- **Port Allocation**: Host-to-container port mappings. Optional auxiliary ports can be disabled or left blank to omit them from the generated specification.
-- **Release Channel**: Select between `latest` (upstream releases), `pkg` (FreeBSD Quarterly), or `pkg-latest` (FreeBSD Latest).
-- **Engine Selection**: Choose whether the stack should be provisioned via `podman` or `appjail`.
+- **Typed Settings &amp; Secrets**: Prompts render as switches (`bool`), bounded numbers (`int`), option pickers (`choice`), storage sizes (`size`), or generated secrets (created automatically at install unless you enter your own).
+- **Install Choices**: Multi-database or modular stacks offer clean pickers (for example `SQLite`, `PostgreSQL`, or `External`) that adjust services, variables, and AppJail templates automatically.
+- **Storage &amp; Folder Sets**: Map persistent libraries with one click via **Add folder set...** (`Media`, `Downloads`, `Photos`), or browse host paths directly. Apps that store no host state say so explicitly.
+- **Per-Service Networking &amp; Names**: Multi-service stacks place the web frontend on your default or LAN network and keep databases/caches on an isolated private network. When paired with a [names provider](networking.md#names-and-local-https), you can assign a local HTTPS name (`radarr.apps.lan`) right in the wizard.
+- **Release Channel &amp; Engine**: Pick `latest`, `pkg`, or `pkg-latest`, and choose `podman` or `appjail` (on FreeBSD).
+- **Capability Review**: Before installing, the wizard highlights any elevated host capabilities requested by a catalog manifest (`privileged`, `cap_add`, `devices`, host namespaces, jail annotations, or bind mounts outside App Data and Folder Sets).
 
-Before starting the container, fjord executes an automated **pre-flight verification**. If a published port is already held by another container, fjord names it; a port held by a host process is reported as in use. The stack configuration is safely written to disk without launching, enabling you to adjust the port binding or terminate the conflicting process.
-
----
-
-### Adopting what you started by hand
-**Adopt** on the dashboard (the stacks overview, also the setup wizard's
-"Already running" step) lists containers and jails on the host that no stack
-owns.
-fjord reads how each was started (`podman create` arguments, AppJail's
-parameters) and writes a stack for it, so it gets the same page, update
-checks and controls as everything installed from the store. A stack that
-does not start afterwards is reported, not hidden.
+Before starting anything, `fjordd` runs **pre-flight checks**: if a default port is already held, the wizard starts on a free port and names what holds the default.
 
 ---
 
-## 2. Stack Lifecycle Management
+### Adopting Existing Containers &amp; Jails
+**Adopt** on the Stacks overview (and during initial Setup) lists unmanaged Podman containers, external `podman-compose` projects, and AppJail jails running on the host. `fjord` reconstructs a standard `compose.yaml` (or AppJail director bundle) from the live runtime configuration and replaces it in place, keeping its image, mounts, network address, MAC, and name without moving data.
+
+---
+
+## 2. Stack Lifecycle, Health &amp; Names
 
 ![The stacks overview: every stack, its state, its update and where it answers](img/stacks-dark.png#only-dark){ .glightbox }
 ![The stacks overview: every stack, its state, its update and where it answers](img/stacks-light.png#only-light){ .glightbox }
@@ -50,73 +46,63 @@ does not start afterwards is reported, not hidden.
 ![A stack page, Services tab](img/stack-dark.png#only-dark){ .glightbox }
 ![A stack page, Services tab](img/stack-light.png#only-light){ .glightbox }
 
-The **Stacks** view lists all active and stopped applications on the host, indicating their engine backend, running state, and update availability.
+The **Stacks** page supports both **Cards** and **List** views, displaying each stack's engine, health status, address or HTTPS name, and available updates (including **Update all** when updates are pending).
 
-### Lifecycle Actions
-- **Start / Stop / Restart**: Dispatches orchestration commands to `podman-compose` or `appjail-director`.
-- **Update**: says what each service would get and lets you pick; recreates and watches the result. See [Updates](updates.md).
-- **Change Version… / Pin**: any published version, pinned to its digest if you want it to stay. See [Updates](updates.md).
-- **Open App**: Opens the primary application web interface in a new browser tab, at its LAN address when it has one.
+### Lifecycle &amp; Access Actions
+- **Open (`▾` menu)**: Opens the web interface by its HTTPS name or direct IP:port, and lets you assign, change, or remove a stack's name on your [names provider](networking.md#names-and-local-https). If the app defines initial or generated credentials, **Sign in** beside **Open** displays them.
+- **Start / Stop / Restart**: Runs inside `fjordd` and verifies the resulting container or jail state.
+- **Update / Roll back / Change Version...**: Reviews SBOM package diffs, watches updated containers stay healthy, pins digests, or rolls back to the previous image. See [Updates](updates.md).
+- **Delete**: Stops and removes the stack while keeping App Data on disk by default, with an explicit option to remove App Data after confirming the stack is down.
 
-While a stack is installing or updating its buttons are greyed and say why;
-a second action is refused until it finishes. A failed action leaves a
-banner with the reason on the stack page until the next one succeeds.
+### Background Health Watch &amp; Recovery Policy
+`fjordd` continuously monitors every running stack in the background (even with no browser open), checking restart counts, non-zero exit codes, container healthchecks, and empty AppJail jails (clean one-shot init containers are ignored). Under each stack's **Settings** tab you can configure:
+
+- **Restart policy**: Boot and crash behavior (`always`, `unless-stopped`, `on-failure`, `no`).
+- **Recovery policy**: What `fjordd` does when a service enters a failure loop (**do nothing**, **restart**, or **stop**), bounded by a maximum attempt count and cooldown window.
 
 ### Interactive Diagnostics Drawer
-The bottom drawer provides three diagnostic views:
+The bottom drawer on every stack page provides three live views:
 
-1. **Output**: Live standard output and error streams from the underlying engine commands (`podman-compose up`, `appjail-director up`, etc.).
-2. **Logs**: Real-time container log streaming from the Libpod socket or the jail's log.
-3. **Shell**: An interactive web terminal connected directly into the running container or jail environment for immediate debugging.
+1. **Output**: Durable record of engine runs (`podman-compose`, `appjail-director`), post-update health watches, and name registrations.
+2. **Logs**: Real-time ANSI-color log streaming from the Libpod socket or jail log.
+3. **Shell**: Interactive WebSocket terminal inside the running container or jail (closing the tab cleanly terminates background shell children).
 
 ---
 
 ## 3. Direct Specification Editing
 
-fjord treats the files on disk as the ultimate ground truth. Every stack page has an integrated CodeMirror editor with syntax highlighting, one tab per file:
+`fjord` treats the files on disk in `/var/db/fjord/stacks/<stack>/` as the ground truth:
 
-- **Compose Specification**: Direct access to `compose.yaml` (Podman stacks) or `appjail-director.yml` + `Makejail` (AppJail stacks).
-- **Environment Configuration**: Key-value pairs stored in `.env`.
-- **Resources**: A structured form view displaying configured mounts and ports. Modifying a volume mount or port here immediately updates the underlying configuration files.
+- **compose.yaml / Makejail**: Built-in CodeMirror editor with YAML anchor and merge-key awareness. Switching away with unsaved edits prompts before discarding.
+- **.env &amp; Resources**: Structured editors for variables, ports, and mounts (including SELinux `:z` and mount options on Linux).
 
-When you click **Apply**, fjord saves the edited files to disk in `/var/db/fjord/stacks/<id>/` and instructs the engine to reconcile running containers against the new configuration.
-
----
-
-## 4. Volume &amp; Storage Provisioning
-
-The **Volumes** dashboard manages named storage volumes independently of specific stacks.
-
-- **Local**: Named volumes on the engine's own storage.
-- **Remote**: `nfs://server/export` and `smb://user@server/share` (SMB on Linux hosts only) mapped as named container volumes.
-- **Safety**: Deleting a volume a stack still uses is refused unless you force it.
+Clicking **Save** writes to disk without disrupting running containers; clicking **Apply** recreates only the services affected by your edits and runs a stay-up health check.
 
 ---
 
-## 5. System Health &amp; Diagnostics
+## 4. Volumes &amp; Storage
+
+The **Volumes** page manages named volumes independently of individual stacks:
+
+- **Local**: Named volumes managed by Podman.
+- **Remote**: `nfs://server/export` (FreeBSD and Linux) and `smb://user@server/share` (Linux hosts) mounted as named container volumes.
+- **Safety**: Volumes referenced by an installed stack cannot be deleted accidentally.
+
+---
+
+## 5. Host Conditions &amp; System Diagnostics
 
 ![Setup: what fjord does itself, and the commands it leaves to you](img/setup-dark.png#only-dark){ .glightbox }
 ![Setup: what fjord does itself, and the commands it leaves to you](img/setup-light.png#only-light){ .glightbox }
 
-The **Setup** screen runs once on a fresh host and gets it ready one thing
-at a time: an **Install** button for what fjord can do itself (plugins, pf
-anchors, services), and a "Your turn" card with the exact commands for what
-changes the host's own configuration, which fjord leaves to you. The same
-checks live on the **System** page afterwards.
-
-The **System** dashboard checks the underlying FreeBSD host on every visit and on **Re-check**:
-
-### Readiness Audits
-Checks the Libpod API socket (`podman.sock`), Packet Filter anchors (`cni-rdr` and `appjail-nat`), container monitors (`conmon`), and runtime binaries (`ocijail`). Each check displays its operational status, technical significance, and a copyable shell fix command.
-
-### Storage Reclamation
-Inspects the total disk space utilized by container layers, base images, and temporary build caches across Podman and AppJail. The **Cleanup** function safely prunes orphaned layers without impacting running stacks or base jail dependencies.
+- **Conditions Banner**: Background host and engine checks run on a timer and whenever runtime state changes. Any problem (a stopped Podman socket, missing PF anchor, outdated `cni-epair` plugin, or unreachable names provider) appears in a top banner across every page and is re-verified automatically before clearing.
+- **Setup &amp; System**: **Set up** configures plugins (`cni-epair` v1.2.1+, `cni-dnsname`), PF anchors, NAT rules, and `dnsmasq` bridge resolution on FreeBSD, or verifies `podman.socket`, `firewalld`/`ufw`, and SELinux on Linux. **Cleanup** prunes unused container layers, build caches, and orphaned resources safely.
 
 ---
 
-## 6. Settings &amp; Customization
+## 6. Settings
 
-- **App Data Directories**: Configure the default filesystem locations or ZFS pools where application state directories are provisioned.
-- **Folder Sets**: Define reusable groups of host directories (e.g. Media, Photos, Backups) that can be mapped into any application with one click.
-- **Catalogs**: Add private or third-party catalog URLs. fjord merges all active catalogs into the App Store.
-- **Default Engine**: Set the preferred container backend (`podman` or `appjail`) for new deployments.
+- **Storage**: Configure default **App Data** roots (ZFS datasets or host directories) and reusable **Folder Sets** (`Media`, `Downloads`, `Photos`, `Backups`).
+- **Plugins &amp; Names**: Choose the default engine (`podman` or `appjail`) and pair or link a [names provider](networking.md#names-and-local-https) (such as `daemonless/reverse-proxy`).
+- **Catalogs**: Manage HTTPS catalog sources (or local LAN catalogs) and trigger manual refreshes.
+- **Account**: View active 30-day browser sessions, sign out remote devices, and update your user name or password.
