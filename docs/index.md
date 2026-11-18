@@ -529,6 +529,21 @@ On the AppJail engine the same happens for a jail: its image, virtual network an
 
 </div>
 
+<div class="fj-section fj-build" id="build-your-own">
+  <div class="fj-build-panel">
+    <p class="fj-build-kicker">An open spec</p>
+    <h2>Don't like what you see? <span class="fj-build-accent">Build your own.</span></h2>
+    <p class="fj-build-desc">fjord, Sylve and FreeCORE each put their own interface on Daemonless containers. The app catalog and the manifest format are an open spec, so your CLI, TUI or web UI can install the same apps.</p>
+    <div class="fj-build-slots" aria-hidden="true">
+      <span class="fj-build-slot">fjord</span>
+      <span class="fj-build-slot">Sylve</span>
+      <span class="fj-build-slot">FreeCORE</span>
+      <span class="fj-build-slot fj-build-slot--yours">+ yours</span>
+    </div>
+    <a href="spec/" class="md-button md-button--primary">Read the spec</a>
+  </div>
+</div>
+
 <div class="fj-section fj-cta">
   <a href="install/" class="md-button md-button--primary">Install fjord</a>
   <a href="https://youtu.be/8S3hEVyCUzc" class="md-button">Watch on YouTube</a>
