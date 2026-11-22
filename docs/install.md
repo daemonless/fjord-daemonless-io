@@ -31,7 +31,7 @@ description: "Install and configure fjord on FreeBSD (Podman and AppJail) and Li
 
     ??? "Alternative FreeBSD methods (Release binary, Port, Source)"
 
-        **Release binary (`v0.4.3`):**
+        **Release binary (`v0.4.5`):**
 
         Every [GitHub release](https://github.com/daemonless/fjord/releases) publishes static FreeBSD `amd64` and `arm64` binaries plus `SHA256SUMS`:
 
@@ -77,7 +77,7 @@ description: "Install and configure fjord on FreeBSD (Podman and AppJail) and Li
     Each release ships native `.rpm` and `.deb` packages (`amd64` and `arm64`) that pull in `podman` and `podman-compose`, enable `podman.socket` and `fjordd.service`, install the `fjord` CLI symlink, and print the URL to open:
 
     ```sh
-    V=0.4.3 A=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+    V=0.4.5 A=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
 
     # Fedora / RHEL-compatible
     sudo dnf install -y https://github.com/daemonless/fjord/releases/download/v$V/fjord-$V-linux-$A.rpm
