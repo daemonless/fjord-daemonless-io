@@ -63,7 +63,7 @@ hide:
 === "Linux (.deb / .rpm)"
 
     ```sh
-    V=0.4.3 A=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+    V=0.4.5 A=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
     # Fedora / RHEL
     sudo dnf install -y https://github.com/daemonless/fjord/releases/download/v$V/fjord-$V-linux-$A.rpm
     # Debian / Ubuntu
