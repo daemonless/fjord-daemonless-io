@@ -72,7 +72,7 @@ What fjord 0.4 and the daemonless catalog implement today, and what this draft s
 | Area | Implemented | Proposed |
 | :--- | :--- | :--- |
 | [`info`](#21-info-application-metadata) | `id`, `name`, `description`, `category`, `class` (`service`, `stack`, `part`), `icon`, `version`, `upstream_url`, `web_url`, `web_port` / `web_https` (the Open link), `own_origin`, `name_env`, `only_for_archs` | `requires`, `health_url`, classes `agent` / `gui` |
-| [`variables`](#22-variables-install-prompts) | types `port`, `string`, `secret`, `path`, `zfs_dataset`, `image_tag`, `public_url`; `label`, `default`, `optional`, `level`, `generate`, `host_permissions`, `image`; required secrets are generated (64 hex chars, or 20 unambiguous letters and digits for `login.password`) | `network_interface`; real ZFS datasets with `zfs_properties` |
+| [`variables`](#22-variables-install-prompts) | types `port`, `string`, `secret`, `path`, `zfs_dataset`, `image_tag`, `public_url`; `label`, `default`, `optional`, `level`, `generate`, `host_permissions`, `image`; required secrets are generated (64 hex chars, or 20 unambiguous letters and digits for `login.password`) | `network_interface`; real ZFS datasets with `zfs_properties`; `needs: domain` on `public_url`, `behind_proxy` |
 | [`variants`](#23-variants-image-tags) | the image's tags to pick from (`id`, `label`, `default`, `version`, `aliases`); the client asks the registry what each tag is built for | — |
 | [`networking`, `hostnames`](#24-networking-and-hostnames-stacks) | per service `default` or `private`, `*` for the rest; the variable each service is found by | — |
 | [`choices`](#25-choices-questions-at-install) | a database (`sqlite`, `postgres`, `mariadb`, `external`) or a part, with everything each answer adds, drops, sets and asks for | — |
@@ -227,6 +227,8 @@ Each variable is a prompt in the install wizard and a line in `.env`. The compos
 | `generate` | No | Secrets only. `false`: a value only its owner has (a tunnel token, an API key), which the user MUST type. See below. |
 | `host_permissions` | No | `zfs_dataset` only: `uid`, `gid` and octal `mode` for the folder the client makes. Default `1000`, `1000`. |
 | `image` | `image_tag` only | The image whose tag this variable picks (`ghcr.io/daemonless/immich-server`). |
+| `needs` | No | `public_url` only. `domain`: the address must be `https://` with a host name, not an IP or a bare host name. See below. |
+| `behind_proxy` | No | The value this variable takes when the app is served through a reverse proxy. See below. |
 
 #### Types
 
@@ -238,7 +240,7 @@ Each variable is a prompt in the install wizard and a line in `.env`. The compos
 | `path` | Host folder picker | An absolute host path. An empty default asks for the user's own folder (a media library); with `optional: true` it may stay empty. |
 | `zfs_dataset` | App data folder | A folder the client makes for the app. A relative default resolves under the client's app data location and the stack's own folder; the client applies `host_permissions`. |
 | `image_tag` | Tag picker | The tag of the image named by `image`, in a stack that runs several images. It follows the tag picked for the stack unless the user changes it; the client lists the tags the registry publishes for that image. |
-| `public_url` | Address field | The address the app is opened at (links in mail it sends, sign-up checks). `http://` or `https://` with a host, optionally a port and path. The client suggests one from where the install puts the app. |
+| `public_url` | Address field | The address the app is opened at (links in mail it sends, sign-up checks). `http://` or `https://` with a host, optionally a port and path. The client suggests one from where the install puts the app. With `needs: domain`, only `https://` and a domain name. |
 
 #### Secrets
 
@@ -248,6 +250,28 @@ A secret's `default` is a placeholder (`changeme`, `your-encryption-key-here`), 
 - With **`generate: false`** the value cannot be made up (a tunnel token from a provider's dashboard). The client asks for it and does not install without it.
 - An **optional** secret left empty stays empty: for some apps empty means "off".
 - On a reinstall over kept app data, the client SHOULD reuse the secrets the data was set up with; new ones would lock the app out of its own database.
+
+#### Public addresses and reverse proxies
+
+Some apps refuse any address but an `https://` one with a domain name: passkeys (WebAuthn) are bound to a domain, and browsers allow them only over HTTPS. `needs: domain` on a `public_url` says so. A client that gives the app a name through a reverse proxy fills the address from that name; it MUST NOT fill it from the host's own address, and it SHOULD refuse an IP, a bare host name or `http://` before install rather than leave the app failing to start. A client without a proxy asks for the address, and the variable's `label` says what it has to be.
+
+```yaml
+- name: APP_URL
+  type: public_url
+  label: Public HTTPS URL of Pocket ID, e.g. https://auth.example.com
+  needs: domain
+```
+
+`behind_proxy` is the value a variable takes when the app is served through a reverse proxy: an app that trusts `X-Forwarded-*` headers only when told to, for example. A client that puts a proxy in front of the app sets the variable to this value and shows it; the user may change it. Otherwise the `default` applies, and it MUST be the value that is safe without a proxy.
+
+```yaml
+- name: TRUST_PROXY
+  type: string
+  default: "false"
+  behind_proxy: "true"
+```
+
+A client that does not know either field ignores it and installs as before: the field is new meaning on an existing type, never a new type.
 
 #### Path placeholders
 
