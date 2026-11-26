@@ -82,7 +82,7 @@ What fjord 0.4 and the daemonless catalog implement today, and what this draft s
 | [Jail annotations](#28-freebsd-jail-annotations) | `org.freebsd.jail.*` in a service's `annotations:` | — |
 | [`host`](#29-host-proposed) | — | `vnet_required`, `vnet_bridge`, `devfs_rules`, `min_freebsd_version` |
 | [Catalog](#3-catalog-distribution) | per catalog `catalog.json` (with `os` and stack `parts`), `manifests/<id>.yaml`, `icons/`, plus `sources.json` published by the catalog builder; several catalogs merged in one store by base URL, filtered by what the host OS can run | `catalog_version`, per-app `updated` |
-| [Install](#41-install) | manifest → choices → app data folders → generated secrets → pre-flight (ports, folders, the tag's architecture) → networks → `.env` → engine → stay-up check and optional name | `min_freebsd_version` and VNET checks, `zfs create`, devfs rules |
+| [Install](#41-install) | manifest → choices → app data location → generated secrets → pre-flight (ports, addresses, the tag's architecture), refused before anything is written → app data folders → networks → `.env` → engine → stay-up check and optional name | `min_freebsd_version` and VNET checks, `zfs create`, devfs rules |
 | [Teardown](#42-teardown) | stop and remove; app data kept unless the user asks to delete it; a private network goes with its stack | — |
 | [Update](#43-update) | per service or across all behind stacks (**Update all**): the change in words (patch, minor, major, a new build) with the package diff; recreate, a 30 s health watch, roll back; `.env` kept | a prompt for variables a new manifest adds |
 
@@ -587,7 +587,7 @@ A client SHOULD refresh a catalog on its own, on a schedule (fjord: every 6 hour
 2. **Choices**: apply the picked answer to each [choice](#25-choices-questions-at-install): add and drop services, set variables, collect the asks.
 3. **App data**: pick the app data location. Relative `zfs_dataset` defaults resolve under it, in the stack's own folder; [path placeholders](#path-placeholders) expand.
 4. **Secrets**: reuse the secrets of kept app data; generate every required secret still empty ([rules](#secrets)).
-5. **Pre-flight**: refuse before changing anything if a port is taken, a folder cannot be made, or the chosen tag has no build for the host's architecture.
+5. **Pre-flight**: refuse before changing anything if a port or address is taken, or an image's chosen tag has no build for the host's architecture (every service's, not only the main image's). Nothing is written until it passes.
 6. **Folders**: make the app data folders and apply `host_permissions`.
 7. **Networks**: put each service where [`networking`](#24-networking-and-hostnames-stacks) says; set [`hostnames`](#24-networking-and-hostnames-stacks) variables to service names.
 8. **`.env`**: write every value beside the compose. The compose is not edited.
